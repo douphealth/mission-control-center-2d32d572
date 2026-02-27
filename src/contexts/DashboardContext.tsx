@@ -66,8 +66,13 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 // ─── Default data seeder ────────────────────────────────────────────────────────
 
 async function seedDefaults() {
-  const count = await db.websites.count();
-  if (count > 0) return; // Already seeded
+  // Check ALL tables — never overwrite user data
+  const [wCount, tCount, rCount, bCount, lCount, nCount, pCount, iCount, cCount, sCount] = await Promise.all([
+    db.websites.count(), db.tasks.count(), db.repos.count(), db.buildProjects.count(),
+    db.links.count(), db.notes.count(), db.payments.count(), db.ideas.count(),
+    db.credentials.count(), db.settings.count(),
+  ]);
+  if (wCount + tCount + rCount + bCount + lCount + nCount + pCount + iCount + cCount + sCount > 0) return;
 
   const now = new Date().toISOString().split('T')[0];
   const id = genId;

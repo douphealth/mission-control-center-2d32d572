@@ -24,15 +24,15 @@ export const TARGET_META: Record<ImportTarget, TargetMeta> = {
     requiredFields: ['name', 'url'],
     optionalFields: ['wpAdminUrl', 'wpUsername', 'wpPassword', 'hostingProvider', 'hostingLoginUrl', 'hostingUsername', 'hostingPassword', 'category', 'status', 'notes', 'plugins', 'tags'],
     aliases: {
-      name: ['site', 'website', 'domain', 'siteName', 'site_name', 'website_name', 'domain_name', 'hostname', 'host', 'site name', 'website name', 'project', 'label'],
-      url: ['link', 'href', 'siteUrl', 'site_url', 'website_url', 'address', 'domain', 'homepage', 'web', 'webpage', 'page', 'site url', 'website url', 'live url', 'liveurl', 'production url', 'prod url'],
-      wpAdminUrl: ['wp_admin', 'wordpress_admin', 'admin_url', 'wp_url', 'wp_admin_url', 'wp admin', 'wordpress admin', 'admin url', 'admin panel', 'wp login', 'wplogin', 'admin login', 'backend', 'backend url', 'dashboard url', 'cms url', 'cms'],
-      wpUsername: ['wp_user', 'wordpress_user', 'admin_user', 'wp_login', 'wp user', 'wordpress user', 'admin user', 'wp username', 'admin username', 'cms user', 'cms username', 'backend user', 'backend username', 'wp login user'],
-      wpPassword: ['wp_pass', 'wordpress_pass', 'admin_pass', 'wp_pwd', 'wp pass', 'wordpress pass', 'admin pass', 'wp password', 'admin password', 'cms pass', 'cms password', 'backend pass', 'backend password', 'wp login pass'],
-      hostingProvider: ['hosting', 'host', 'provider', 'hosting_provider', 'hoster', 'hosting provider', 'server', 'host provider', 'web host', 'webhost'],
-      hostingLoginUrl: ['hosting_url', 'hosting_login', 'host_url', 'hosting url', 'hosting login', 'host url', 'hosting login url', 'hosting panel', 'cpanel url', 'cpanel', 'plesk', 'server url'],
-      hostingUsername: ['hosting_user', 'host_user', 'hosting user', 'hosting username', 'host user', 'host username', 'server user', 'server username', 'cpanel user', 'cpanel username'],
-      hostingPassword: ['hosting_pass', 'host_pass', 'hosting_pwd', 'hosting pass', 'hosting password', 'host pass', 'host password', 'server pass', 'server password', 'cpanel pass', 'cpanel password'],
+      name: ['site', 'website', 'domain', 'siteName', 'site_name', 'website_name', 'domain_name', 'hostname', 'host', 'site name', 'website name', 'project', 'label', 'site title', 'website title'],
+      url: ['link', 'href', 'siteUrl', 'site_url', 'website_url', 'address', 'domain', 'homepage', 'web', 'webpage', 'page', 'site url', 'website url', 'live url', 'liveurl', 'production url', 'prod url', 'website link', 'site link', 'main url'],
+      wpAdminUrl: ['wp_admin', 'wordpress_admin', 'admin_url', 'wp_url', 'wp_admin_url', 'wp admin', 'wordpress admin', 'admin url', 'admin panel', 'wp login', 'wplogin', 'admin login', 'backend', 'backend url', 'dashboard url', 'cms url', 'cms', 'wp admin url', 'admin', 'wordpress url', 'wp-admin', 'wordpress login'],
+      wpUsername: ['wp_user', 'wordpress_user', 'admin_user', 'wp_login', 'wp user', 'wordpress user', 'admin user', 'wp username', 'admin username', 'cms user', 'cms username', 'backend user', 'backend username', 'wp login user', 'username', 'user', 'login', 'user name'],
+      wpPassword: ['wp_pass', 'wordpress_pass', 'admin_pass', 'wp_pwd', 'wp pass', 'wordpress pass', 'admin pass', 'wp password', 'admin password', 'cms pass', 'cms password', 'backend pass', 'backend password', 'wp login pass', 'password', 'pass', 'pwd'],
+      hostingProvider: ['hosting', 'host', 'provider', 'hosting_provider', 'hoster', 'hosting provider', 'server', 'host provider', 'web host', 'webhost', 'hosting company'],
+      hostingLoginUrl: ['hosting_url', 'hosting_login', 'host_url', 'hosting url', 'hosting login', 'host url', 'hosting login url', 'hosting panel', 'cpanel url', 'cpanel', 'plesk', 'server url', 'hosting dashboard'],
+      hostingUsername: ['hosting_user', 'host_user', 'hosting user', 'hosting username', 'host user', 'host username', 'server user', 'server username', 'cpanel user', 'cpanel username', 'hosting login user', 'hosting account user'],
+      hostingPassword: ['hosting_pass', 'host_pass', 'hosting_pwd', 'hosting pass', 'hosting password', 'host pass', 'host password', 'server pass', 'server password', 'cpanel pass', 'cpanel password', 'hosting login pass', 'hosting account password'],
       category: ['type', 'group', 'cat', 'kind', 'sector', 'niche'],
       status: ['state', 'active', 'live'],
       notes: ['note', 'comment', 'comments', 'description', 'desc', 'info', 'details'],
@@ -283,12 +283,19 @@ export function parseImportData(text: string, fileName?: string): ParsedData {
     };
   }
 
-  // 4. Smart plain-text
-  const nonEmpty = lines.filter(l => l.trim());
-  const plainRows = smartParsePlainText(nonEmpty);
+  // 4. Smart plain-text — pass ALL lines (including blanks) for block splitting
+  const plainRows = smartParsePlainText(lines);
   if (plainRows.length > 0) {
     const sourceFields = [...new Set(plainRows.flatMap(r => Object.keys(r)))];
     return { rows: plainRows, sourceFields, detectedFormat: 'text' };
+  }
+
+  // 4b. Try again with non-empty lines only (for URL lists, task lists)
+  const nonEmpty = lines.filter(l => l.trim());
+  const plainRows2 = smartParsePlainText(nonEmpty);
+  if (plainRows2.length > 0) {
+    const sourceFields = [...new Set(plainRows2.flatMap(r => Object.keys(r)))];
+    return { rows: plainRows2, sourceFields, detectedFormat: 'text' };
   }
 
   // 5. Last fallback — every line is an item
@@ -310,7 +317,12 @@ function detectDelimiter(line: string): string {
 
 /** Parse plain text lines into structured rows by detecting patterns */
 function smartParsePlainText(lines: string[]): Record<string, string>[] {
-  const kvRegex = /^(.+?)[:=]\s*(.+)$/;
+  const kvRegex = /^([^:=]+?)[:=]\s*(.+)$/;
+  // A line is KV only if the key part is NOT a URL scheme
+  const isKvLine = (l: string): boolean => {
+    if (/^https?:/i.test(l.trim())) return false; // URL line, not KV
+    return kvRegex.test(l);
+  };
 
   // ── Strategy 1: Multi-block key:value data (websites/credentials) ──
   // Split by blank lines into blocks, each block = one record
@@ -326,7 +338,7 @@ function smartParsePlainText(lines: string[]): Record<string, string>[] {
     for (const block of blocks) {
       const blockLines = block.split('\n').map(l => l.trim()).filter(Boolean);
       totalLines += blockLines.length;
-      const kvMatches = blockLines.filter(l => kvRegex.test(l));
+      const kvMatches = blockLines.filter(l => isKvLine(l));
       totalKvLines += kvMatches.length;
 
       if (kvMatches.length >= 1) {
@@ -334,10 +346,10 @@ function smartParsePlainText(lines: string[]): Record<string, string>[] {
         // Also capture a "header" line (first line without : or =) as a potential name
         let headerUsed = false;
         for (const l of blockLines) {
-          const m = l.match(kvRegex);
-          if (m) {
-            obj[m[1].trim()] = m[2].trim();
-          } else if (!headerUsed && l.trim() && !l.startsWith('#') && !l.startsWith('---')) {
+          if (isKvLine(l)) {
+            const m = l.match(kvRegex);
+            if (m) obj[m[1].trim()] = m[2].trim();
+          } else if (!headerUsed && l.trim() && !l.startsWith('#') && !l.startsWith('---') && !/^https?:/i.test(l.trim())) {
             // Treat first non-kv line as a title/name
             obj['__header__'] = l.replace(/^[-*•▪▸►→#]+\s*/, '').trim();
             headerUsed = true;
@@ -571,36 +583,37 @@ export function normalizeItems(
 ): Record<string, any>[] {
   const now = new Date().toISOString().split('T')[0];
   const meta = TARGET_META[target];
+  // Build a lookup: for each target field, collect ALL normalized alias strings (including the field name itself)
+  const fieldAliasMap = new Map<string, Set<string>>();
+  const allTargetFields = [...meta.requiredFields, ...meta.optionalFields];
+  for (const tf of allTargetFields) {
+    const aliases = new Set<string>();
+    aliases.add(normalize(tf));
+    for (const a of (meta.aliases[tf] || [])) aliases.add(normalize(a));
+    fieldAliasMap.set(tf, aliases);
+  }
+
+  // Pre-normalize all row keys once per call for perf
+  const normalizedRowKeys = new Map<string, string>();
+  for (const row of rows) {
+    for (const k of Object.keys(row)) {
+      if (!normalizedRowKeys.has(k)) normalizedRowKeys.set(k, normalize(k));
+    }
+  }
+
   const get = (row: Record<string, string>, field: string): string => {
-    // Try mapped field first
+    // 1. Try mapped field first
     const mapped = fieldMap[field];
-    if (mapped && row[mapped]) return row[mapped].trim();
-    // Try direct field name
-    if (row[field]) return row[field].trim();
-    // Try case-insensitive direct
-    const lf = field.toLowerCase();
-    for (const k of Object.keys(row)) {
-      if (k.toLowerCase() === lf && row[k]) return row[k].trim();
-    }
-    // Try all aliases for this field against row keys (normalized)
-    const aliasList = meta.aliases[field] || [];
-    for (const alias of aliasList) {
-      const normalAlias = normalize(alias);
+    if (mapped && row[mapped]?.trim()) return row[mapped].trim();
+    // 2. Try direct field name
+    if (row[field]?.trim()) return row[field].trim();
+    // 3. Exact normalized match against aliases (NO partial matching — prevents ambiguity)
+    const aliases = fieldAliasMap.get(field);
+    if (aliases) {
       for (const k of Object.keys(row)) {
-        const normalK = normalize(k);
-        if (normalK === normalAlias && row[k]) return row[k].trim();
-        // Partial: "WP Admin" → normalize → "wpadmin" matches alias "wpadmin"
-        if (normalK.includes(normalAlias) || normalAlias.includes(normalK)) {
-          if (row[k] && normalK.length >= 2) return row[k].trim();
-        }
+        const nk = normalizedRowKeys.get(k) || normalize(k);
+        if (aliases.has(nk) && row[k]?.trim()) return row[k].trim();
       }
-    }
-    // Also try if the normalized field name itself matches a row key
-    const normalField = normalize(field);
-    for (const k of Object.keys(row)) {
-      const normalK = normalize(k);
-      if (normalK === normalField && row[k]) return row[k].trim();
-      if ((normalK.includes(normalField) || normalField.includes(normalK)) && normalK.length >= 3 && row[k]) return row[k].trim();
     }
     return '';
   };
