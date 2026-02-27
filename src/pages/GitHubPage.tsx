@@ -6,6 +6,7 @@ import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInpu
 import type { GitHubRepo } from "@/lib/store";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScript: "bg-yellow-400", Python: "bg-blue-400", PHP: "bg-purple-500", HTML: "bg-orange-500", Go: "bg-sky-400", Rust: "bg-orange-600", Ruby: "bg-red-500" };
@@ -18,6 +19,8 @@ export default function GitHubPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyRepo);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<GitHubRepo>();
 
   const filtered = repos.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase()));
@@ -33,16 +36,33 @@ export default function GitHubPage() {
     }
     setModalOpen(false);
   };
-  const deleteRepo = (id: string) => { if (confirm("Delete this repo?")) updateData({ repos: repos.filter(r => r.id !== id) }); };
+  const deleteRepo = (id: string) => setPendingDeleteId(id);
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
+
+  const closeDeleteDialog = useCallback(() => {
+    setPendingDeleteId(null);
+    setPendingBulkDelete(false);
+  }, []);
+
+  const confirmDeleteSingle = useCallback(() => {
+    if (!pendingDeleteId) return;
+    updateData({ repos: repos.filter(r => r.id !== pendingDeleteId) });
+    toast.success("Repository deleted");
+    closeDeleteDialog();
+  }, [pendingDeleteId, repos, updateData, closeDeleteDialog]);
 
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    if (!confirm(`Delete ${bulk.selectedCount} repo(s)?`)) return;
+    setPendingBulkDelete(true);
+  }, [bulk.selectedCount]);
+
+  const confirmBulkDelete = useCallback(() => {
+    if (bulk.selectedCount === 0) return;
     updateData({ repos: repos.filter(r => !bulk.selectedIds.has(r.id)) });
     toast.success(`${bulk.selectedCount} repos deleted`);
     bulk.clearSelection();
-  }, [bulk, repos, updateData]);
+    closeDeleteDialog();
+  }, [bulk, repos, updateData, closeDeleteDialog]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     updateData({ repos: repos.map(r => bulk.selectedIds.has(r.id) ? { ...r, status: status as any } : r) });
@@ -155,6 +175,28 @@ export default function GitHubPage() {
         <FormField label="Deployment Gateway URL"><FormInput value={form.deploymentUrl || ""} onChange={v => uf("deploymentUrl", v)} placeholder="https://vercel.com/..., cloudways.com/..., netlify.app/..." /></FormField>
         <FormField label="Topics"><FormTagsInput value={form.topics} onChange={v => uf("topics", v)} placeholder="Add topic and press Enter" /></FormField>
       </FormModal>
+
+      <AlertDialog
+        open={pendingBulkDelete || pendingDeleteId !== null}
+        onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBulkDelete
+                ? `Delete ${bulk.selectedCount} repo(s)? This action cannot be undone.`
+                : "Delete this repository? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
