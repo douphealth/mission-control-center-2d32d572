@@ -46,6 +46,8 @@ export interface GitHubRepo {
   progress: number;
   topics: string[];
   lastUpdated: string;
+  devPlatformUrl?: string;
+  deploymentUrl?: string;
 }
 
 export interface BuildProject {

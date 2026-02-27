@@ -1,7 +1,9 @@
 /**
- * Smart Import Engine v10.0 — Ultra-autonomous, content-aware, multi-category detection.
+ * Smart Import Engine v12.0 — Ultra-autonomous, content-aware, multi-category detection.
  * Parses ANY format, analyzes actual cell values (not just headers),
  * auto-fills missing fields from context, and imports with zero user intervention.
+ * v12: Relaxed validation — items pass if ANY primary field is present. 
+ *      Enhanced URL extraction from any position. GitHub repos support devPlatformUrl & deploymentUrl.
  */
 import Papa from 'papaparse';
 
@@ -73,7 +75,7 @@ export const TARGET_META: Record<ImportTarget, TargetMeta> = {
   repos: {
     label: 'GitHub Repos', emoji: '🐙',
     requiredFields: ['name'],
-    optionalFields: ['url', 'description', 'language', 'stars', 'forks', 'status', 'demoUrl', 'progress', 'topics'],
+    optionalFields: ['url', 'description', 'language', 'stars', 'forks', 'status', 'demoUrl', 'progress', 'topics', 'devPlatformUrl', 'deploymentUrl'],
     aliases: {
       name: ['repo', 'repository', 'repo_name', 'project', 'full_name'],
       url: ['link', 'href', 'github_url', 'repo_url', 'html_url', 'clone_url', 'ssh_url'],
@@ -85,6 +87,8 @@ export const TARGET_META: Record<ImportTarget, TargetMeta> = {
       demoUrl: ['demo', 'demo_url', 'homepage', 'live_url'],
       progress: ['completion', 'percent'],
       topics: ['tags', 'labels', 'keywords', 'topic'],
+      devPlatformUrl: ['dev_platform', 'dev_platform_url', 'platform_url', 'platform', 'dev_url', 'builder_url', 'builder', 'ide_url', 'ide', 'aistudio', 'ai_studio', 'bolt_url', 'lovable_url', 'replit_url', 'coding_platform', 'development_url', 'dev platform', 'development platform', 'code platform', 'code url'],
+      deploymentUrl: ['deployment', 'deployment_url', 'deploy_url', 'gateway', 'gateway_url', 'hosting_url', 'published_url', 'published', 'live', 'live_url', 'production_url', 'production', 'cloudways', 'vercel', 'netlify', 'railway', 'render', 'fly', 'pages', 'cloudflare_pages', 'deployed', 'deploy gateway', 'deployment gateway'],
     },
     contentSignals: [/github\.com/i, /gitlab\.com/i, /bitbucket/i, /repository|repo/i, /stars?|forks?/i],
   },
@@ -672,6 +676,8 @@ export function normalizeItems(
           status: get(row, 'status') || 'active', demoUrl: get(row, 'demoUrl'),
           progress: parseInt(get(row, 'progress')) || 0,
           topics: toArray(get(row, 'topics')), lastUpdated: now,
+          devPlatformUrl: get(row, 'devPlatformUrl'),
+          deploymentUrl: get(row, 'deploymentUrl'),
         };
       case 'buildProjects':
         return {
@@ -728,12 +734,18 @@ export function normalizeItems(
         return {};
     }
   }).filter(item => {
-    // Smart validation: required fields must exist, but we auto-fill from content
+    // v12: Relaxed validation — at least ONE required field must be non-empty
+    // This prevents legitimate items from being dropped when one field is auto-derived
     const meta = TARGET_META[target];
-    return meta.requiredFields.every(f => {
+    const filledRequired = meta.requiredFields.filter(f => {
       const val = item[f];
-      return val !== undefined && val !== null && val !== '';
+      return val !== undefined && val !== null && val !== '' && val !== 'Unnamed' && val !== 'Untitled' && val !== 'unnamed-repo';
     });
+    // If at least one real required field OR the item has meaningful content (URL, description, etc.)
+    if (filledRequired.length > 0) return true;
+    // Fallback: check if the item has ANY URL or meaningful text content
+    const allVals = Object.values(item).filter(v => typeof v === 'string' && v.trim()).join(' ');
+    return URL_REGEX.test(allVals) || allVals.length > 10;
   });
 }
 
