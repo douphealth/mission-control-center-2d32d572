@@ -76,18 +76,18 @@ export const TARGET_META: Record<ImportTarget, TargetMeta> = {
     requiredFields: ['name'],
     optionalFields: ['url', 'description', 'language', 'stars', 'forks', 'status', 'demoUrl', 'progress', 'topics', 'devPlatformUrl', 'deploymentUrl'],
     aliases: {
-      name: ['repo', 'repository', 'repo_name', 'project', 'full_name'],
-      url: ['link', 'href', 'github_url', 'repo_url', 'html_url', 'clone_url', 'ssh_url'],
+      name: ['repo', 'repository', 'repo_name', 'project', 'full_name', 'repo name', 'repository name'],
+      url: ['link', 'href', 'github_url', 'repo_url', 'html_url', 'clone_url', 'ssh_url', 'github url'],
       description: ['desc', 'about', 'summary'],
       language: ['lang', 'tech', 'primary_language'],
       stars: ['star', 'stargazers', 'stargazers_count'],
       forks: ['fork', 'forks_count'],
       status: ['state', 'archived'],
-      demoUrl: ['demo', 'demo_url', 'homepage', 'live_url'],
+      demoUrl: ['demo', 'demo_url', 'homepage', 'live_url', 'demo url'],
       progress: ['completion', 'percent'],
       topics: ['tags', 'labels', 'keywords', 'topic'],
-      devPlatformUrl: ['dev_platform', 'dev_platform_url', 'platform_url', 'platform', 'dev_url', 'builder_url', 'builder', 'ide_url', 'ide', 'aistudio', 'ai_studio', 'bolt_url', 'lovable_url', 'replit_url', 'coding_platform', 'development_url', 'dev platform', 'development platform', 'code platform', 'code url'],
-      deploymentUrl: ['deployment', 'deployment_url', 'deploy_url', 'gateway', 'gateway_url', 'hosting_url', 'published_url', 'published', 'live', 'live_url', 'production_url', 'production', 'cloudways', 'vercel', 'netlify', 'railway', 'render', 'fly', 'pages', 'cloudflare_pages', 'deployed', 'deploy gateway', 'deployment gateway'],
+      devPlatformUrl: ['dev_platform', 'dev_platform_url', 'platform_url', 'platform', 'dev_url', 'builder_url', 'builder', 'ide_url', 'ide', 'aistudio', 'ai_studio', 'bolt_url', 'lovable_url', 'replit_url', 'coding_platform', 'development_url', 'dev platform', 'development platform', 'code platform', 'code url', 'dev platform url'],
+      deploymentUrl: ['deployment', 'deployment_url', 'deploy_url', 'gateway', 'gateway_url', 'hosting_url', 'published_url', 'published', 'live', 'live_url', 'production_url', 'production', 'cloudways', 'vercel', 'netlify', 'railway', 'render', 'fly', 'pages', 'cloudflare_pages', 'deployed', 'deploy gateway', 'deployment gateway', 'deployment gateway url'],
     },
     contentSignals: [/github\.com/i, /gitlab\.com/i, /bitbucket/i, /repository|repo/i, /stars?|forks?/i],
   },
@@ -190,7 +190,7 @@ export const TARGET_META: Record<ImportTarget, TargetMeta> = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalize(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_\s\-./]+/g, '');
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_\s\-./\*#@!&^%$()]+/g, '');
 }
 
 const URL_REGEX = /https?:\/\/[^\s,;"'<>)}\]]+/gi;
