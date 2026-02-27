@@ -6,7 +6,7 @@ import {
   LayoutGrid, List, Shield, Server, Key, Lock, Unlock, ChevronDown, ChevronRight,
   Activity, AlertTriangle, CheckCircle2, Clock, ArrowUpRight,
   Filter, SortAsc, SortDesc, Layers, Tag, Puzzle, MoreVertical,
-  RefreshCw, Archive, Zap, TrendingUp, BarChart3
+  RefreshCw, Archive, Zap, TrendingUp, BarChart3, CheckSquare, Square, XCircle
 } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { Website } from "@/lib/store";
@@ -63,7 +63,8 @@ export default function WebsitesPage() {
   const [form, setForm] = useState(emptyWebsite);
   const [expandedSite, setExpandedSite] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
   // ─── Derived data ──────────────────────────────────────────────
 
   const categories = useMemo(() => {
@@ -154,6 +155,47 @@ export default function WebsitesPage() {
     toast.success("Website deleted");
   };
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(w => w.id)));
+    }
+  }, [filtered, selectedIds.size]);
+
+  const bulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} website(s)? This cannot be undone.`)) return;
+    updateData({ websites: websites.filter(w => !selectedIds.has(w.id)) });
+    toast.success(`${selectedIds.size} websites deleted`);
+    setSelectedIds(new Set());
+    setBulkMode(false);
+  }, [selectedIds, websites, updateData]);
+
+  const bulkUpdateStatus = useCallback((status: string) => {
+    if (selectedIds.size === 0) return;
+    const now = new Date().toISOString().split("T")[0];
+    updateData({ websites: websites.map(w => selectedIds.has(w.id) ? { ...w, status, lastUpdated: now } : w) });
+    toast.success(`${selectedIds.size} websites updated to ${status}`);
+    setSelectedIds(new Set());
+  }, [selectedIds, websites, updateData]);
+
+  const bulkUpdateCategory = useCallback((category: string) => {
+    if (selectedIds.size === 0) return;
+    const now = new Date().toISOString().split("T")[0];
+    updateData({ websites: websites.map(w => selectedIds.has(w.id) ? { ...w, category, lastUpdated: now } : w) });
+    toast.success(`${selectedIds.size} websites updated to ${category}`);
+    setSelectedIds(new Set());
+  }, [selectedIds, websites, updateData]);
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDirection('desc'); }
@@ -212,7 +254,15 @@ export default function WebsitesPage() {
 
     return (
       <motion.div key={site.id} {...fadeUp(i)}
-        className="group relative bg-card rounded-2xl border border-border/30 hover:border-border/60 transition-all duration-300 overflow-hidden hover:shadow-lg hover:shadow-primary/5">
+        onClick={bulkMode ? () => toggleSelect(site.id) : undefined}
+        className={`group relative bg-card rounded-2xl border transition-all duration-300 overflow-hidden hover:shadow-lg hover:shadow-primary/5 ${bulkMode ? 'cursor-pointer' : ''} ${selectedIds.has(site.id) ? 'border-primary/50 ring-1 ring-primary/20' : 'border-border/30 hover:border-border/60'}`}>
+
+        {/* Bulk select checkbox */}
+        {bulkMode && (
+          <div className="absolute top-3 right-3 z-10">
+            {selectedIds.has(site.id) ? <CheckSquare size={18} className="text-primary" /> : <Square size={18} className="text-muted-foreground" />}
+          </div>
+        )}
 
         {/* Top accent bar */}
         <div className={`h-1 bg-gradient-to-r ${catConfig.gradient}`} />
@@ -353,8 +403,15 @@ export default function WebsitesPage() {
 
     return (
       <motion.div key={site.id} {...fadeUp(i)}
-        className="group bg-card rounded-xl border border-border/20 hover:border-border/50 transition-all overflow-hidden hover:shadow-md">
+        onClick={bulkMode ? () => toggleSelect(site.id) : undefined}
+        className={`group bg-card rounded-xl border transition-all overflow-hidden hover:shadow-md ${bulkMode ? 'cursor-pointer' : ''} ${selectedIds.has(site.id) ? 'border-primary/50 ring-1 ring-primary/20' : 'border-border/20 hover:border-border/50'}`}>
         <div className="flex items-center gap-4 px-5 py-3.5">
+          {/* Bulk checkbox */}
+          {bulkMode && (
+            <div className="flex-shrink-0">
+              {selectedIds.has(site.id) ? <CheckSquare size={18} className="text-primary" /> : <Square size={18} className="text-muted-foreground" />}
+            </div>
+          )}
           {/* Avatar */}
           <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${catConfig.gradient} flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-sm`}>
             {site.name.charAt(0).toUpperCase()}
@@ -464,11 +521,56 @@ export default function WebsitesPage() {
             Manage all your websites, credentials, and hosting from one place
           </p>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-primary/20">
-          <Plus size={16} /> Add Website
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()); }}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            <CheckSquare size={15} /> {bulkMode ? 'Cancel' : 'Bulk'}
+          </button>
+          <button onClick={openAdd}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-primary/20">
+            <Plus size={16} /> Add Website
+          </button>
+        </div>
       </div>
+
+      {/* Bulk Action Bar */}
+      {bulkMode && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/15">
+          <button onClick={selectAll} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-secondary/50 hover:bg-secondary transition-all">
+            {selectedIds.size === filtered.length ? <CheckSquare size={13} /> : <Square size={13} />}
+            {selectedIds.size === filtered.length ? 'Deselect All' : 'Select All'}
+          </button>
+          <span className="text-xs text-muted-foreground font-medium">{selectedIds.size} selected</span>
+          {selectedIds.size > 0 && (
+            <>
+              <div className="h-4 w-px bg-border/30" />
+              <select onChange={e => { if (e.target.value) bulkUpdateStatus(e.target.value); e.target.value = ''; }}
+                className="px-2.5 py-1.5 rounded-lg bg-secondary/50 text-xs font-semibold text-muted-foreground border border-border/15 outline-none cursor-pointer">
+                <option value="">Set Status...</option>
+                <option value="active">✅ Active</option>
+                <option value="maintenance">🔧 Maintenance</option>
+                <option value="down">🔴 Down</option>
+                <option value="archived">📦 Archived</option>
+              </select>
+              <select onChange={e => { if (e.target.value) bulkUpdateCategory(e.target.value); e.target.value = ''; }}
+                className="px-2.5 py-1.5 rounded-lg bg-secondary/50 text-xs font-semibold text-muted-foreground border border-border/15 outline-none cursor-pointer">
+                <option value="">Set Category...</option>
+                <option value="Personal">🏠 Personal</option>
+                <option value="Client Site">👔 Client Site</option>
+                <option value="E-Commerce">🛒 E-Commerce</option>
+                <option value="Blog">📝 Blog</option>
+                <option value="SaaS">🚀 SaaS</option>
+                <option value="Portfolio">🎨 Portfolio</option>
+              </select>
+              <button onClick={bulkDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all ml-auto">
+                <Trash2 size={12} /> Delete ({selectedIds.size})
+              </button>
+            </>
+          )}
+        </motion.div>
+      )}
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
