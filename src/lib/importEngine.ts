@@ -22,20 +22,20 @@ export const TARGET_META: Record<ImportTarget, TargetMeta> = {
     requiredFields: ['name', 'url'],
     optionalFields: ['wpAdminUrl', 'wpUsername', 'wpPassword', 'hostingProvider', 'hostingLoginUrl', 'hostingUsername', 'hostingPassword', 'category', 'status', 'notes', 'plugins', 'tags'],
     aliases: {
-      name: ['site', 'website', 'domain', 'siteName', 'site_name', 'website_name', 'domain_name', 'hostname', 'host'],
-      url: ['link', 'href', 'siteUrl', 'site_url', 'website_url', 'address', 'domain', 'homepage', 'web', 'webpage', 'page'],
-      wpAdminUrl: ['wp_admin', 'wordpress_admin', 'admin_url', 'wp_url', 'wp_admin_url'],
-      wpUsername: ['wp_user', 'wordpress_user', 'admin_user', 'wp_login'],
-      wpPassword: ['wp_pass', 'wordpress_pass', 'admin_pass', 'wp_pwd'],
-      hostingProvider: ['hosting', 'host', 'provider', 'hosting_provider', 'hoster'],
-      hostingLoginUrl: ['hosting_url', 'hosting_login', 'host_url'],
-      hostingUsername: ['hosting_user', 'host_user'],
-      hostingPassword: ['hosting_pass', 'host_pass', 'hosting_pwd'],
-      category: ['type', 'group', 'cat', 'kind'],
-      status: ['state', 'active'],
-      notes: ['note', 'comment', 'comments', 'description', 'desc'],
-      plugins: ['plugin', 'extensions', 'addons'],
-      tags: ['tag', 'labels'],
+      name: ['site', 'website', 'domain', 'siteName', 'site_name', 'website_name', 'domain_name', 'hostname', 'host', 'site name', 'website name', 'project', 'label'],
+      url: ['link', 'href', 'siteUrl', 'site_url', 'website_url', 'address', 'domain', 'homepage', 'web', 'webpage', 'page', 'site url', 'website url', 'live url', 'liveurl', 'production url', 'prod url'],
+      wpAdminUrl: ['wp_admin', 'wordpress_admin', 'admin_url', 'wp_url', 'wp_admin_url', 'wp admin', 'wordpress admin', 'admin url', 'admin panel', 'wp login', 'wplogin', 'admin login', 'backend', 'backend url', 'dashboard url', 'cms url', 'cms'],
+      wpUsername: ['wp_user', 'wordpress_user', 'admin_user', 'wp_login', 'wp user', 'wordpress user', 'admin user', 'wp username', 'admin username', 'cms user', 'cms username', 'backend user', 'backend username', 'wp login user'],
+      wpPassword: ['wp_pass', 'wordpress_pass', 'admin_pass', 'wp_pwd', 'wp pass', 'wordpress pass', 'admin pass', 'wp password', 'admin password', 'cms pass', 'cms password', 'backend pass', 'backend password', 'wp login pass'],
+      hostingProvider: ['hosting', 'host', 'provider', 'hosting_provider', 'hoster', 'hosting provider', 'server', 'host provider', 'web host', 'webhost'],
+      hostingLoginUrl: ['hosting_url', 'hosting_login', 'host_url', 'hosting url', 'hosting login', 'host url', 'hosting login url', 'hosting panel', 'cpanel url', 'cpanel', 'plesk', 'server url'],
+      hostingUsername: ['hosting_user', 'host_user', 'hosting user', 'hosting username', 'host user', 'host username', 'server user', 'server username', 'cpanel user', 'cpanel username'],
+      hostingPassword: ['hosting_pass', 'host_pass', 'hosting_pwd', 'hosting pass', 'hosting password', 'host pass', 'host password', 'server pass', 'server password', 'cpanel pass', 'cpanel password'],
+      category: ['type', 'group', 'cat', 'kind', 'sector', 'niche'],
+      status: ['state', 'active', 'live'],
+      notes: ['note', 'comment', 'comments', 'description', 'desc', 'info', 'details'],
+      plugins: ['plugin', 'extensions', 'addons', 'modules'],
+      tags: ['tag', 'labels', 'keywords'],
     },
     contentSignals: [/wp-admin/i, /wordpress/i, /hosting/i, /\.com|\.org|\.io|\.net|\.dev|\.co|\.app|\.me|\.info|\.biz/i, /siteground|cloudways|bluehost|godaddy/i, /https?:\/\/[^\s]+/i],
   },
@@ -306,14 +306,71 @@ function detectDelimiter(line: string): string {
 
 /** Parse plain text lines into structured rows by detecting patterns */
 function smartParsePlainText(lines: string[]): Record<string, string>[] {
-  // Check if lines contain URLs (even mixed with text)
+  const kvRegex = /^(.+?)[:=]\s*(.+)$/;
+
+  // ── Strategy 1: Multi-block key:value data (websites/credentials) ──
+  // Split by blank lines into blocks, each block = one record
+  const rawText = lines.join('\n');
+  const blocks = rawText.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+
+  if (blocks.length >= 1) {
+    // Check if blocks are key:value structured
+    const kvBlocks: Record<string, string>[] = [];
+    let totalKvLines = 0;
+    let totalLines = 0;
+
+    for (const block of blocks) {
+      const blockLines = block.split('\n').map(l => l.trim()).filter(Boolean);
+      totalLines += blockLines.length;
+      const kvMatches = blockLines.filter(l => kvRegex.test(l));
+      totalKvLines += kvMatches.length;
+
+      if (kvMatches.length >= 1) {
+        const obj: Record<string, string> = {};
+        // Also capture a "header" line (first line without : or =) as a potential name
+        let headerUsed = false;
+        for (const l of blockLines) {
+          const m = l.match(kvRegex);
+          if (m) {
+            obj[m[1].trim()] = m[2].trim();
+          } else if (!headerUsed && l.trim() && !l.startsWith('#') && !l.startsWith('---')) {
+            // Treat first non-kv line as a title/name
+            obj['__header__'] = l.replace(/^[-*•▪▸►→#]+\s*/, '').trim();
+            headerUsed = true;
+          }
+        }
+        if (Object.keys(obj).length > 0) kvBlocks.push(obj);
+      }
+    }
+
+    // If >40% of all lines are key:value, treat as structured blocks
+    if (totalKvLines > 0 && totalKvLines >= totalLines * 0.35 && kvBlocks.length > 0) {
+      // Normalize keys to match known field aliases
+      return kvBlocks.map(block => {
+        const normalized: Record<string, string> = {};
+        for (const [rawKey, val] of Object.entries(block)) {
+          if (rawKey === '__header__') {
+            // Use header as name/site/title if no name field exists
+            if (!Object.keys(block).some(k => ['name', 'site', 'website', 'title', 'domain'].some(a => normalize(k).includes(a)))) {
+              normalized['name'] = val;
+            }
+            continue;
+          }
+          normalized[rawKey] = val;
+        }
+        return normalized;
+      });
+    }
+  }
+
+  // ── Strategy 2: Lines with URLs (website/link list) ──
   const urlLines: { line: string; urls: string[] }[] = [];
   for (const l of lines) {
     const urls = l.match(URL_REGEX);
+    URL_REGEX.lastIndex = 0;
     if (urls && urls.length > 0) urlLines.push({ line: l, urls });
   }
 
-  // If >30% of lines have URLs, treat as website/link data
   if (urlLines.length > 0 && urlLines.length >= lines.length * 0.3) {
     return urlLines.map(({ line, urls }) => {
       const url = urls[0];
@@ -324,19 +381,7 @@ function smartParsePlainText(lines: string[]): Record<string, string>[] {
     });
   }
 
-  // Check if lines are key:value pairs (credentials-like)
-  const kvRegex = /^(.+?)[:=]\s*(.+)$/;
-  const kvLines = lines.filter(l => kvRegex.test(l));
-  if (kvLines.length > lines.length * 0.6) {
-    const obj: Record<string, string> = {};
-    kvLines.forEach(l => {
-      const m = l.match(kvRegex);
-      if (m) obj[m[1].trim()] = m[2].trim();
-    });
-    return [obj];
-  }
-
-  // Otherwise treat as task/note titles
+  // ── Strategy 3: Plain list items (tasks/notes) ──
   return lines.filter(l => l.trim()).map(l => {
     const clean = l.replace(/^[-*•▪▸►→]\s*/, '').replace(/^\d+[.)]\s*/, '').trim();
     return { title: clean };
@@ -396,22 +441,38 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
   }
 
   // --- Special boosts ---
-  // If data has URLs and we're scoring websites, give a big boost
   if (target === 'websites') {
     const urlCount = sampleRows.filter(r => Object.values(r).some(v => URL_REGEX.test(v))).length;
-    // Reset regex lastIndex
     URL_REGEX.lastIndex = 0;
     if (urlCount > sampleRows.length * 0.5) score += 15;
     // If fields include "name" + "url" pattern, strong website signal
     const hasNameAndUrl = sourceFields.some(f => normalize(f) === 'name' || normalize(f) === 'site' || normalize(f) === 'website' || normalize(f) === 'domain') &&
                           sourceFields.some(f => normalize(f) === 'url' || normalize(f) === 'link' || normalize(f) === 'href' || normalize(f) === 'address');
     if (hasNameAndUrl) score += 10;
+    // Boost for website-specific key:value fields (WP Admin, Hosting, etc.)
+    const websiteKeywords = ['wpadmin', 'wordpress', 'hosting', 'hostingprovider', 'wpusername', 'wppassword', 'siteurl', 'adminurl', 'hostinglogin', 'cpanel', 'nameserver', 'dns', 'ssl'];
+    const keywordHits = sourceFields.filter(f => websiteKeywords.some(kw => normalize(f).includes(kw))).length;
+    if (keywordHits > 0) score += keywordHits * 8;
+    // If ANY row has multiple URLs, likely a website record
+    const multiUrlRows = sampleRows.filter(r => {
+      const allVals = Object.values(r).join(' ');
+      const matches = allVals.match(URL_REGEX);
+      URL_REGEX.lastIndex = 0;
+      return matches && matches.length >= 2;
+    }).length;
+    if (multiUrlRows > 0) score += 12;
   }
 
   // Boost links less than websites when URLs are present  
   if (target === 'links') {
-    const hasWebsiteSignals = sourceFields.some(f => ['site', 'website', 'domain', 'hosting', 'wp'].includes(normalize(f)));
-    if (hasWebsiteSignals) score -= 10; // Prefer websites category
+    const hasWebsiteSignals = sourceFields.some(f => ['site', 'website', 'domain', 'hosting', 'wp', 'wpadmin', 'wordpress', 'hostingprovider', 'wpusername', 'wppassword', 'adminurl'].some(kw => normalize(f).includes(kw)));
+    if (hasWebsiteSignals) score -= 15;
+  }
+
+  // Penalize credentials less when password/username present alongside URL
+  if (target === 'credentials') {
+    const hasWebsiteSignals = sourceFields.some(f => ['hosting', 'wpadmin', 'wordpress', 'hostingprovider', 'siteurl'].some(kw => normalize(f).includes(kw)));
+    if (hasWebsiteSignals) score -= 10;
   }
 
   return score;
@@ -505,6 +566,7 @@ export function normalizeItems(
   fieldMap: Record<string, string>
 ): Record<string, any>[] {
   const now = new Date().toISOString().split('T')[0];
+  const meta = TARGET_META[target];
   const get = (row: Record<string, string>, field: string): string => {
     // Try mapped field first
     const mapped = fieldMap[field];
@@ -515,6 +577,26 @@ export function normalizeItems(
     const lf = field.toLowerCase();
     for (const k of Object.keys(row)) {
       if (k.toLowerCase() === lf && row[k]) return row[k].trim();
+    }
+    // Try all aliases for this field against row keys (normalized)
+    const aliasList = meta.aliases[field] || [];
+    for (const alias of aliasList) {
+      const normalAlias = normalize(alias);
+      for (const k of Object.keys(row)) {
+        const normalK = normalize(k);
+        if (normalK === normalAlias && row[k]) return row[k].trim();
+        // Partial: "WP Admin" → normalize → "wpadmin" matches alias "wpadmin"
+        if (normalK.includes(normalAlias) || normalAlias.includes(normalK)) {
+          if (row[k] && normalK.length >= 2) return row[k].trim();
+        }
+      }
+    }
+    // Also try if the normalized field name itself matches a row key
+    const normalField = normalize(field);
+    for (const k of Object.keys(row)) {
+      const normalK = normalize(k);
+      if (normalK === normalField && row[k]) return row[k].trim();
+      if ((normalK.includes(normalField) || normalField.includes(normalK)) && normalK.length >= 3 && row[k]) return row[k].trim();
     }
     return '';
   };
