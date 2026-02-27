@@ -1,10 +1,12 @@
 import { useDashboard } from "@/contexts/DashboardContext";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw, CheckSquare } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect } from "@/components/FormModal";
 import type { Payment } from "@/lib/store";
 import { toast } from "sonner";
+import { useBulkActions } from "@/hooks/useBulkActions";
+import BulkActionBar from "@/components/BulkActionBar";
 
 const typeIcons: Record<string, string> = { income: "💰", expense: "💸", invoice: "📄", subscription: "🔄" };
 const statusBadge: Record<string, string> = { paid: "badge-success", pending: "badge-warning", overdue: "badge-destructive", cancelled: "badge-muted" };
@@ -18,6 +20,7 @@ export default function PaymentsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyPayment);
+  const bulk = useBulkActions<Payment>();
 
   const filtered = payments
     .filter(p => filterType === "all" || p.type === filterType)
@@ -52,8 +55,21 @@ export default function PaymentsPage() {
     toast.success("Marked as paid");
   };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
-
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+
+  const bulkDelete = useCallback(() => {
+    if (bulk.selectedCount === 0) return;
+    if (!confirm(`Delete ${bulk.selectedCount} payment(s)?`)) return;
+    updateData({ payments: payments.filter(p => !bulk.selectedIds.has(p.id)) });
+    toast.success(`${bulk.selectedCount} payments deleted`);
+    bulk.clearSelection();
+  }, [bulk, payments, updateData]);
+
+  const bulkUpdateStatus = useCallback((status: string) => {
+    updateData({ payments: payments.map(p => bulk.selectedIds.has(p.id) ? { ...p, status: status as any } : p) });
+    toast.success(`${bulk.selectedCount} payments updated`);
+    bulk.clearSelection();
+  }, [bulk, payments, updateData]);
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -62,10 +78,32 @@ export default function PaymentsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Payments & Finance</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{payments.length} records{overdueCount > 0 && <span className="text-destructive font-medium"> · {overdueCount} overdue</span>}</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
-          <Plus size={16} /> Add
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={bulk.toggleBulkMode}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+            <Plus size={16} /> Add
+          </button>
+        </div>
       </div>
+
+      {bulk.bulkMode && (
+        <BulkActionBar
+          selectedCount={bulk.selectedCount}
+          totalCount={filtered.length}
+          onSelectAll={() => bulk.selectAll(filtered)}
+          allSelected={bulk.selectedCount === filtered.length && filtered.length > 0}
+          onDelete={bulkDelete}
+          dropdowns={[
+            { label: "Set Status...", onSelect: bulkUpdateStatus, options: [
+              { value: "paid", label: "✅ Paid" }, { value: "pending", label: "⏳ Pending" },
+              { value: "overdue", label: "🔴 Overdue" }, { value: "cancelled", label: "❌ Cancelled" },
+            ]},
+          ]}
+        />
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -108,8 +146,12 @@ export default function PaymentsPage() {
       <div className="space-y-2">
         {filtered.map((payment, i) => (
           <motion.div key={payment.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}
-            className="card-elevated p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 group">
+            onClick={bulk.bulkMode ? () => bulk.toggleSelect(payment.id) : undefined}
+            className={`card-elevated p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(payment.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
             <div className="flex items-center gap-3 flex-1 min-w-0">
+              {bulk.bulkMode && (
+                <div className="flex-shrink-0">{bulk.isSelected(payment.id) ? <CheckSquare size={16} className="text-primary" /> : <div className="w-4 h-4 rounded border border-muted-foreground/30" />}</div>
+              )}
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-secondary flex items-center justify-center text-lg flex-shrink-0">
                 {typeIcons[payment.type]}
               </div>
@@ -132,13 +174,15 @@ export default function PaymentsPage() {
                 <div className="text-[10px] text-muted-foreground">{payment.dueDate || payment.paidDate}</div>
               </div>
               <span className={`${statusBadge[payment.status]} text-[10px] flex-shrink-0`}>{payment.status}</span>
-              <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                {(payment.status === "pending" || payment.status === "overdue") && (
-                  <button onClick={() => markPaid(payment.id)} className="text-[11px] text-success hover:underline px-1.5">Pay</button>
-                )}
-                <button onClick={() => openEdit(payment)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
-                <button onClick={() => deletePayment(payment.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
-              </div>
+              {!bulk.bulkMode && (
+                <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  {(payment.status === "pending" || payment.status === "overdue") && (
+                    <button onClick={() => markPaid(payment.id)} className="text-[11px] text-success hover:underline px-1.5">Pay</button>
+                  )}
+                  <button onClick={() => openEdit(payment)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
+                  <button onClick={() => deletePayment(payment.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
+                </div>
+              )}
             </div>
           </motion.div>
         ))}

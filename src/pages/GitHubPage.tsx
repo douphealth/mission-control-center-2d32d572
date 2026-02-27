@@ -1,9 +1,12 @@
 import { useDashboard } from "@/contexts/DashboardContext";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search, Rocket, Code2 } from "lucide-react";
+import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search, Rocket, Code2, CheckSquare } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { GitHubRepo } from "@/lib/store";
+import { useBulkActions } from "@/hooks/useBulkActions";
+import BulkActionBar from "@/components/BulkActionBar";
+import { toast } from "sonner";
 
 const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScript: "bg-yellow-400", Python: "bg-blue-400", PHP: "bg-purple-500", HTML: "bg-orange-500", Go: "bg-sky-400", Rust: "bg-orange-600", Ruby: "bg-red-500" };
 
@@ -15,6 +18,7 @@ export default function GitHubPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyRepo);
+  const bulk = useBulkActions<GitHubRepo>();
 
   const filtered = repos.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase()));
 
@@ -32,6 +36,20 @@ export default function GitHubPage() {
   const deleteRepo = (id: string) => { if (confirm("Delete this repo?")) updateData({ repos: repos.filter(r => r.id !== id) }); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
+  const bulkDelete = useCallback(() => {
+    if (bulk.selectedCount === 0) return;
+    if (!confirm(`Delete ${bulk.selectedCount} repo(s)?`)) return;
+    updateData({ repos: repos.filter(r => !bulk.selectedIds.has(r.id)) });
+    toast.success(`${bulk.selectedCount} repos deleted`);
+    bulk.clearSelection();
+  }, [bulk, repos, updateData]);
+
+  const bulkUpdateStatus = useCallback((status: string) => {
+    updateData({ repos: repos.map(r => bulk.selectedIds.has(r.id) ? { ...r, status: status as any } : r) });
+    toast.success(`${bulk.selectedCount} repos updated`);
+    bulk.clearSelection();
+  }, [bulk, repos, updateData]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -39,10 +57,32 @@ export default function GitHubPage() {
           <h1 className="text-2xl font-bold text-foreground">GitHub Projects</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{repos.length} repositories</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
-          <Plus size={16} /> Add Repo
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={bulk.toggleBulkMode}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+            <Plus size={16} /> Add Repo
+          </button>
+        </div>
       </div>
+
+      {bulk.bulkMode && (
+        <BulkActionBar
+          selectedCount={bulk.selectedCount}
+          totalCount={filtered.length}
+          onSelectAll={() => bulk.selectAll(filtered)}
+          allSelected={bulk.selectedCount === filtered.length && filtered.length > 0}
+          onDelete={bulkDelete}
+          dropdowns={[
+            { label: "Set Status...", onSelect: bulkUpdateStatus, options: [
+              { value: "active", label: "✅ Active" }, { value: "stable", label: "🟢 Stable" },
+              { value: "paused", label: "⏸️ Paused" }, { value: "archived", label: "📦 Archived" },
+            ]},
+          ]}
+        />
+      )}
 
       <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 max-w-xs">
         <Search size={14} className="text-muted-foreground" />
@@ -51,8 +91,13 @@ export default function GitHubPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((repo, i) => (
-          <motion.div key={repo.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="card-elevated p-5 space-y-3 group">
+          <motion.div key={repo.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+            onClick={bulk.bulkMode ? () => bulk.toggleSelect(repo.id) : undefined}
+            className={`card-elevated p-5 space-y-3 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(repo.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
             <div className="flex items-start justify-between">
+              {bulk.bulkMode && (
+                <div className="mr-2">{bulk.isSelected(repo.id) ? <CheckSquare size={16} className="text-primary" /> : <div className="w-4 h-4 rounded border border-muted-foreground/30" />}</div>
+              )}
               <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-card-foreground hover:text-primary transition-colors">{repo.name}</a>
               <span className={`badge-${repo.status === "active" ? "success" : repo.status === "stable" ? "info" : repo.status === "paused" ? "warning" : "muted"}`}>{repo.status}</span>
             </div>

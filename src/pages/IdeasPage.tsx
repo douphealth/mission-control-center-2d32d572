@@ -1,10 +1,12 @@
 import { useDashboard } from "@/contexts/DashboardContext";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles, CheckSquare } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { Idea } from "@/lib/store";
 import { toast } from "sonner";
+import { useBulkActions } from "@/hooks/useBulkActions";
+import BulkActionBar from "@/components/BulkActionBar";
 
 const statusConfig: Record<string, { label: string; icon: any; class: string; bg: string }> = {
   spark: { label: "Spark", icon: Sparkles, class: "badge-warning", bg: "from-warning/20 to-warning/5" },
@@ -25,6 +27,7 @@ export default function IdeasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyIdea);
+  const bulk = useBulkActions<Idea>();
 
   const filtered = ideas
     .filter(i => filterStatus === "all" || i.status === filterStatus)
@@ -55,6 +58,28 @@ export default function IdeasPage() {
   };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
+  const bulkDelete = useCallback(() => {
+    if (bulk.selectedCount === 0) return;
+    if (!confirm(`Delete ${bulk.selectedCount} idea(s)?`)) return;
+    updateData({ ideas: ideas.filter(i => !bulk.selectedIds.has(i.id)) });
+    toast.success(`${bulk.selectedCount} ideas deleted`);
+    bulk.clearSelection();
+  }, [bulk, ideas, updateData]);
+
+  const bulkUpdateStatus = useCallback((status: string) => {
+    const now = new Date().toISOString().split("T")[0];
+    updateData({ ideas: ideas.map(i => bulk.selectedIds.has(i.id) ? { ...i, status: status as any, updatedAt: now } : i) });
+    toast.success(`${bulk.selectedCount} ideas updated`);
+    bulk.clearSelection();
+  }, [bulk, ideas, updateData]);
+
+  const bulkUpdatePriority = useCallback((priority: string) => {
+    const now = new Date().toISOString().split("T")[0];
+    updateData({ ideas: ideas.map(i => bulk.selectedIds.has(i.id) ? { ...i, priority: priority as any, updatedAt: now } : i) });
+    toast.success(`${bulk.selectedCount} ideas updated`);
+    bulk.clearSelection();
+  }, [bulk, ideas, updateData]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -62,10 +87,30 @@ export default function IdeasPage() {
           <h1 className="text-2xl font-bold text-foreground">Ideas Board</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{ideas.length} ideas · {ideas.filter(i => i.status === "exploring" || i.status === "validated").length} active</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
-          <Lightbulb size={16} /> New Idea
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={bulk.toggleBulkMode}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+            <Lightbulb size={16} /> New Idea
+          </button>
+        </div>
       </div>
+
+      {bulk.bulkMode && (
+        <BulkActionBar
+          selectedCount={bulk.selectedCount}
+          totalCount={filtered.length}
+          onSelectAll={() => bulk.selectAll(filtered)}
+          allSelected={bulk.selectedCount === filtered.length && filtered.length > 0}
+          onDelete={bulkDelete}
+          dropdowns={[
+            { label: "Set Status...", onSelect: bulkUpdateStatus, options: Object.entries(statusConfig).map(([k, v]) => ({ value: k, label: v.label })) },
+            { label: "Set Priority...", onSelect: bulkUpdatePriority, options: [{ value: "high", label: "🔴 High" }, { value: "medium", label: "🟡 Medium" }, { value: "low", label: "🟢 Low" }] },
+          ]}
+        />
+      )}
 
       {/* Status pipeline overview */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -82,23 +127,25 @@ export default function IdeasPage() {
         })}
       </div>
 
-      {/* Filters */}
       <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 max-w-sm">
         <Search size={14} className="text-muted-foreground" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search ideas..." className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full" />
       </div>
 
-      {/* Ideas Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((idea, i) => {
           const cfg = statusConfig[idea.status] || statusConfig.spark;
           return (
             <motion.div key={idea.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              className="card-elevated overflow-hidden group">
+              onClick={bulk.bulkMode ? () => bulk.toggleSelect(idea.id) : undefined}
+              className={`card-elevated overflow-hidden group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(idea.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
               <div className={`h-1.5 bg-gradient-to-r ${cfg.bg}`} />
               <div className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
+                    {bulk.bulkMode && (
+                      <div>{bulk.isSelected(idea.id) ? <CheckSquare size={16} className="text-primary" /> : <div className="w-4 h-4 rounded border border-muted-foreground/30" />}</div>
+                    )}
                     <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityDot[idea.priority]}`} />
                     <h3 className="font-semibold text-card-foreground text-sm truncate">{idea.title}</h3>
                   </div>
@@ -112,15 +159,17 @@ export default function IdeasPage() {
                 )}
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
-                    <button onClick={() => upvote(idea.id)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-lg hover:bg-primary/10">
+                    <button onClick={(e) => { e.stopPropagation(); upvote(idea.id); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-lg hover:bg-primary/10">
                       <ThumbsUp size={12} /> {idea.votes}
                     </button>
                     <span className="badge-muted text-[10px]">{idea.category}</span>
                   </div>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(idea)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
-                    <button onClick={() => deleteIdea(idea.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
-                  </div>
+                  {!bulk.bulkMode && (
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openEdit(idea)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
+                      <button onClick={() => deleteIdea(idea.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
