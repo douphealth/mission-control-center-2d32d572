@@ -1,4 +1,6 @@
 import { useDashboard } from '@/contexts/DashboardContext';
+import { useNavigationStore } from '@/stores/navigationStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useState, useCallback, useMemo } from 'react';
 import * as RGL from 'react-grid-layout';
 // @ts-ignore
@@ -78,8 +80,9 @@ function ProgressRing({ value, max, color, size = 44 }: { value: number; max: nu
 export default function DashboardHome() {
   const {
     websites, repos, buildProjects, tasks, links, notes, payments, ideas, habits,
-    setActiveSection, userName,
   } = useDashboard();
+  const { setActiveSection } = useNavigationStore();
+  const { userName } = useSettingsStore();
 
   const [layouts, setLayouts] = useState(() => loadSavedLayout() || { lg: getDefaultLayouts(12), md: getDefaultLayouts(10), sm: getDefaultLayouts(6), xs: getDefaultLayouts(4) });
   const [visibility, setVisibility] = useState<Record<string, boolean>>(() => loadWidgetVisibility());
