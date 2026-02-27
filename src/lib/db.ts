@@ -56,6 +56,10 @@ export interface GitHubRepo {
     progress: number;
     topics: string[];
     lastUpdated: string;
+    /** URL of the dev platform where code was built (bolt.new, lovable, replit, aistudio, etc.) */
+    devPlatformUrl?: string;
+    /** URL of the deployment gateway (Cloudways, Vercel, Netlify, Railway, etc.) */
+    deploymentUrl?: string;
 }
 
 export interface BuildProject {

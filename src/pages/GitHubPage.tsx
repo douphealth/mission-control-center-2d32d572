@@ -1,13 +1,13 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search } from "lucide-react";
+import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search, Rocket, Code2 } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { GitHubRepo } from "@/lib/store";
 
 const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScript: "bg-yellow-400", Python: "bg-blue-400", PHP: "bg-purple-500", HTML: "bg-orange-500", Go: "bg-sky-400", Rust: "bg-orange-600", Ruby: "bg-red-500" };
 
-const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0] };
+const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0], devPlatformUrl: "", deploymentUrl: "" };
 
 export default function GitHubPage() {
   const { repos, updateData } = useDashboard();
@@ -69,9 +69,11 @@ export default function GitHubPage() {
             <div className="flex flex-wrap gap-1">
               {repo.topics.map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground">{t}</span>)}
             </div>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
               <a href={repo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline"><ExternalLink size={12} /> Repo</a>
               {repo.demoUrl && <a href={repo.demoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">🌐 Demo</a>}
+              {repo.devPlatformUrl && <a href={repo.devPlatformUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Code2 size={12} /> Platform</a>}
+              {repo.deploymentUrl && <a href={repo.deploymentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Rocket size={12} /> Deploy</a>}
               <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => openEdit(repo)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
                 <button onClick={() => deleteRepo(repo.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
@@ -104,6 +106,8 @@ export default function GitHubPage() {
           <FormField label="Progress %"><FormInput value={String(form.progress)} onChange={v => uf("progress", Math.min(100, parseInt(v)||0))} type="number" /></FormField>
         </div>
         <FormField label="Demo URL"><FormInput value={form.demoUrl} onChange={v => uf("demoUrl", v)} placeholder="https://demo.example.com" /></FormField>
+        <FormField label="Dev Platform URL"><FormInput value={form.devPlatformUrl || ""} onChange={v => uf("devPlatformUrl", v)} placeholder="https://bolt.new/..., lovable.dev/..., replit.com/..." /></FormField>
+        <FormField label="Deployment Gateway URL"><FormInput value={form.deploymentUrl || ""} onChange={v => uf("deploymentUrl", v)} placeholder="https://vercel.com/..., cloudways.com/..., netlify.app/..." /></FormField>
         <FormField label="Topics"><FormTagsInput value={form.topics} onChange={v => uf("topics", v)} placeholder="Add topic and press Enter" /></FormField>
       </FormModal>
     </div>
