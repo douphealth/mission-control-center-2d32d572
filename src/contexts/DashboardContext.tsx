@@ -4,6 +4,7 @@ import type { Website, Task, GitHubRepo, BuildProject, LinkItem, Note, Payment, 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { isSupabaseConnected, pullFromSupabase, pushToSupabase } from '@/lib/supabase';
 
 // Re-export types for convenience
 export type { Website, Task, GitHubRepo, BuildProject, LinkItem, Note, Payment, Idea, CredentialVault, CustomModule, HabitTracker, UserSettings, WidgetLayout };
@@ -167,7 +168,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
 
-  // Initialize DB & load settings into Zustand
+  // Debounced auto-push ref
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const schedulePush = useCallback(() => {
+    if (!isSupabaseConnected()) return;
+    if (pushTimer.current) clearTimeout(pushTimer.current);
+    pushTimer.current = setTimeout(() => {
+      pushToSupabase().then(r => {
+        if (r.success) console.log(`☁️ Auto-pushed ${r.synced} items`);
+        else console.warn('☁️ Auto-push failed:', r.error);
+      });
+    }, 2000); // 2s debounce
+  }, []);
+
+  // Initialize DB, load settings, and auto-pull from Supabase
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -175,6 +189,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         await migrateFromLocalStorage();
+
+        // Auto-pull from Supabase BEFORE seeding defaults
+        if (isSupabaseConnected()) {
+          console.log('☁️ Auto-pulling from Supabase...');
+          const result = await pullFromSupabase();
+          if (result.success && result.synced > 0) {
+            console.log(`☁️ Pulled ${result.synced} items from Supabase`);
+          }
+        }
+
         await seedDefaults();
         await loadSettings();
       } catch (e) {
@@ -224,27 +248,31 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     const tableRef = getTable(table);
     if (!tableRef) throw new Error(`Unknown table: ${table}`);
     await tableRef.put({ ...item, id });
+    schedulePush();
     return id;
-  }, []);
+  }, [schedulePush]);
 
   const updateItem = useCallback(async <T extends { id: string }>(table: string, id: string, changes: Partial<T>): Promise<void> => {
     const tableRef = getTable(table);
     if (!tableRef) throw new Error(`Unknown table: ${table}`);
     await tableRef.update(id, changes);
-  }, []);
+    schedulePush();
+  }, [schedulePush]);
 
   const deleteItem = useCallback(async (table: string, id: string): Promise<void> => {
     const tableRef = getTable(table);
     if (!tableRef) throw new Error(`Unknown table: ${table}`);
     await tableRef.delete(id);
-  }, []);
+    schedulePush();
+  }, [schedulePush]);
 
   const bulkAddItems = useCallback(async <T extends { id: string }>(table: string, items: Omit<T, 'id'>[]): Promise<void> => {
     const tableRef = getTable(table);
     if (!tableRef) throw new Error(`Unknown table: ${table}`);
     const withIds = items.map(item => ({ ...item, id: genId() }));
     await tableRef.bulkPut(withIds);
-  }, []);
+    schedulePush();
+  }, [schedulePush]);
 
   const updateSettings = useCallback(async (changes: Partial<UserSettings>): Promise<void> => {
     await db.settings.update('default', changes);
@@ -324,7 +352,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         if (value.length > 0) await tableMap[key].bulkPut(value);
       }
     }
-  }, [zustandUpdateSettings]);
+    schedulePush();
+  }, [zustandUpdateSettings, schedulePush]);
 
   const value: DashboardContextValue = {
     websites, tasks, repos, buildProjects, links, notes, payments, ideas, credentials, customModules, habits,
