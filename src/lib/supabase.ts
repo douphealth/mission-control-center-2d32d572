@@ -113,19 +113,32 @@ ALTER TABLE mc_habits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mc_settings ENABLE ROW LEVEL SECURITY;
 
 -- Allow all operations (customize for production)
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_websites FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_tasks FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_repos FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_build_projects FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_links FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_notes FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_payments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_ideas FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_credentials FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_custom_modules FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_habits FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_settings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "allow_all_mc" ON mc_sync_log FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_websites;
+CREATE POLICY "allow_all_mc" ON mc_websites FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_tasks;
+CREATE POLICY "allow_all_mc" ON mc_tasks FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_repos;
+CREATE POLICY "allow_all_mc" ON mc_repos FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_build_projects;
+CREATE POLICY "allow_all_mc" ON mc_build_projects FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_links;
+CREATE POLICY "allow_all_mc" ON mc_links FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_notes;
+CREATE POLICY "allow_all_mc" ON mc_notes FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_payments;
+CREATE POLICY "allow_all_mc" ON mc_payments FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_ideas;
+CREATE POLICY "allow_all_mc" ON mc_ideas FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_credentials;
+CREATE POLICY "allow_all_mc" ON mc_credentials FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_custom_modules;
+CREATE POLICY "allow_all_mc" ON mc_custom_modules FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_habits;
+CREATE POLICY "allow_all_mc" ON mc_habits FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_settings;
+CREATE POLICY "allow_all_mc" ON mc_settings FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "allow_all_mc" ON mc_sync_log;
+CREATE POLICY "allow_all_mc" ON mc_sync_log FOR ALL USING (true) WITH CHECK (true);
 `;
 
 // ─── Table map ─────────────────────────────────────────────────────────────────
