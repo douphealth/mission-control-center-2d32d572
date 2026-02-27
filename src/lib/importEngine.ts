@@ -1,9 +1,8 @@
 /**
- * Smart Import Engine v12.0 — Ultra-autonomous, content-aware, multi-category detection.
- * Parses ANY format, analyzes actual cell values (not just headers),
- * auto-fills missing fields from context, and imports with zero user intervention.
- * v12: Relaxed validation — items pass if ANY primary field is present. 
- *      Enhanced URL extraction from any position. GitHub repos support devPlatformUrl & deploymentUrl.
+ * Smart Import Engine v14.0 — Ultra-autonomous, content-aware, multi-category detection.
+ * v14: TRANSPOSED TABLE DETECTION — when columns represent records (not rows),
+ *      the engine auto-detects and transposes before processing.
+ *      Handles spreadsheet-style data where Row1=field names, Col2..N=records.
  */
 import Papa from 'papaparse';
 
@@ -222,6 +221,59 @@ export interface ParsedData {
   detectedFormat: 'csv' | 'tsv' | 'json' | 'jsonlines' | 'text';
 }
 
+/**
+ * Detect if a parsed TSV/CSV is actually a TRANSPOSED table where:
+ * - Column 0 = field/attribute names (Site Name, URL, WP Admin URL, etc.)
+ * - Columns 1..N = individual records (one per column)
+ * Returns transposed rows if detected, or null.
+ */
+function detectAndTranspose(rows: Record<string, string>[], sourceFields: string[]): Record<string, string>[] | null {
+  if (rows.length < 2 || sourceFields.length < 2) return null;
+
+  // The first header is the "label column" header (e.g. "Site Name")
+  // The remaining headers are potential record names/values
+  const labelHeader = sourceFields[0];
+  const dataHeaders = sourceFields.slice(1);
+
+  // Collect all first-column values across rows — these should be field names
+  const firstColValues = rows.map(r => r[labelHeader]?.trim()).filter(Boolean);
+  if (firstColValues.length < 2) return null;
+
+  // Check if first-column values look like known field names/aliases
+  const allAliases = new Set<string>();
+  for (const target of Object.keys(TARGET_META) as ImportTarget[]) {
+    const meta = TARGET_META[target];
+    for (const field of [...meta.requiredFields, ...meta.optionalFields]) {
+      allAliases.add(normalize(field));
+      for (const alias of (meta.aliases[field] || [])) {
+        allAliases.add(normalize(alias));
+      }
+    }
+  }
+
+  const matchCount = firstColValues.filter(v => allAliases.has(normalize(v))).length;
+  // If >40% of first-column values match known field names, it's transposed
+  if (matchCount < firstColValues.length * 0.3) return null;
+
+  // Transpose: each data column becomes a record
+  const transposed: Record<string, string>[] = [];
+  for (const colHeader of dataHeaders) {
+    const record: Record<string, string> = {};
+    for (const row of rows) {
+      const fieldName = row[labelHeader]?.trim();
+      const value = row[colHeader]?.trim();
+      if (fieldName && value) {
+        record[fieldName] = value;
+      }
+    }
+    if (Object.keys(record).length > 0) {
+      transposed.push(record);
+    }
+  }
+
+  return transposed.length > 0 ? transposed : null;
+}
+
 export function parseImportData(text: string, fileName?: string): ParsedData {
   const trimmed = text.trim();
 
@@ -271,13 +323,22 @@ export function parseImportData(text: string, fileName?: string): ParsedData {
   });
 
   if (result.data.length > 0 && result.meta.fields && result.meta.fields.length > 1) {
-    const rows = result.data as Record<string, string>[];
+    const rows = (result.data as Record<string, string>[]).map(r => {
+      const obj: Record<string, string> = {};
+      for (const [k, v] of Object.entries(r)) obj[k] = String(v ?? '').trim();
+      return obj;
+    });
+
+    // ★ CHECK FOR TRANSPOSED TABLE ★
+    const transposed = detectAndTranspose(rows, result.meta.fields);
+    if (transposed) {
+      // First-column values become the new source fields
+      const newSourceFields = [...new Set(transposed.flatMap(r => Object.keys(r)))];
+      return { rows: transposed, sourceFields: newSourceFields, detectedFormat: isTSV ? 'tsv' : 'csv' };
+    }
+
     return {
-      rows: rows.map(r => {
-        const obj: Record<string, string> = {};
-        for (const [k, v] of Object.entries(r)) obj[k] = String(v ?? '').trim();
-        return obj;
-      }),
+      rows,
       sourceFields: result.meta.fields,
       detectedFormat: isTSV ? 'tsv' : 'csv',
     };
