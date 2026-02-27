@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { db, genId, migrateFromLocalStorage } from '@/lib/db';
 import type { Website, Task, GitHubRepo, BuildProject, LinkItem, Note, Payment, Idea, CredentialVault, CustomModule, HabitTracker, UserSettings, WidgetLayout } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useNavigationStore } from '@/stores/navigationStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 // Re-export types for convenience
 export type { Website, Task, GitHubRepo, BuildProject, LinkItem, Note, Payment, Idea, CredentialVault, CustomModule, HabitTracker, UserSettings, WidgetLayout };
@@ -20,14 +22,14 @@ interface DashboardContextValue {
   customModules: CustomModule[];
   habits: HabitTracker[];
 
-  // Settings
+  // Settings (delegated to Zustand but kept for backward compat)
   userName: string;
   userRole: string;
   theme: 'light' | 'dark' | 'system';
   sidebarCollapsed: boolean;
   dashboardLayout: WidgetLayout[];
 
-  // Navigation
+  // Navigation (delegated to Zustand but kept for backward compat)
   activeSection: string;
   setActiveSection: (s: string) => void;
   sidebarOpen: boolean;
@@ -66,7 +68,6 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 // ─── Default data seeder ────────────────────────────────────────────────────────
 
 async function seedDefaults() {
-  // Check ALL tables — never overwrite user data
   const [wCount, tCount, rCount, bCount, lCount, nCount, pCount, iCount, cCount, sCount] = await Promise.all([
     db.websites.count(), db.tasks.count(), db.repos.count(), db.buildProjects.count(),
     db.links.count(), db.notes.count(), db.payments.count(), db.ideas.count(),
@@ -159,12 +160,14 @@ async function seedDefaults() {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
-  const [activeSection, setActiveSection] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Delegate navigation to Zustand
+  const { activeSection, setActiveSection, sidebarOpen, setSidebarOpen, sidebarCollapsed } = useNavigationStore();
+  const { userName, userRole, theme, toggleTheme, setTheme, loadSettings, updateSettings: zustandUpdateSettings } = useSettingsStore();
+  
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
 
-  // Initialize DB
+  // Initialize DB & load settings into Zustand
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -173,13 +176,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         await migrateFromLocalStorage();
         await seedDefaults();
+        await loadSettings();
       } catch (e) {
         console.error('DB init error:', e);
       } finally {
         setIsLoading(false);
       }
     })();
-  }, []);
+  }, [loadSettings]);
 
   // Live queries — reactive to DB changes
   const websites = useLiveQuery(() => db.websites.toArray(), []) ?? [];
@@ -195,17 +199,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const habits = useLiveQuery(() => db.habits.toArray(), []) ?? [];
   const settings = useLiveQuery(() => db.settings.get('default'), []);
 
-  const userName = settings?.userName ?? 'Alex';
-  const userRole = settings?.userRole ?? 'Digital Creator & Developer';
-  const theme = settings?.theme ?? 'dark';
-  const sidebarCollapsed = settings?.sidebarCollapsed ?? false;
   const dashboardLayout = settings?.dashboardLayout ?? [];
-
-  // Theme effect
-  useEffect(() => {
-    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [theme]);
 
   // CRUD operations
   const getTable = (tableName: string) => {
@@ -254,19 +248,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const updateSettings = useCallback(async (changes: Partial<UserSettings>): Promise<void> => {
     await db.settings.update('default', changes);
-  }, []);
+    // Sync to Zustand
+    if (changes.userName || changes.userRole || changes.theme) {
+      await zustandUpdateSettings(changes);
+    }
+    if (changes.sidebarCollapsed !== undefined) {
+      useNavigationStore.getState().setSidebarCollapsed(changes.sidebarCollapsed);
+    }
+  }, [zustandUpdateSettings]);
 
   const saveDashboardLayout = useCallback(async (layout: WidgetLayout[]): Promise<void> => {
     await db.settings.update('default', { dashboardLayout: layout });
-  }, []);
-
-  const toggleTheme = useCallback(async () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    await db.settings.update('default', { theme: next });
-  }, [theme]);
-
-  const setTheme = useCallback(async (t: 'light' | 'dark' | 'system') => {
-    await db.settings.update('default', { theme: t });
   }, []);
 
   const exportAllData = useCallback(async (): Promise<string> => {
@@ -284,7 +276,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       habits: await db.habits.toArray(),
       settings: await db.settings.get('default'),
       exportedAt: new Date().toISOString(),
-      version: '7.0',
+      version: '8.0',
     };
     return JSON.stringify(data, null, 2);
   }, []);
@@ -303,7 +295,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (data.customModules) { await db.customModules.clear(); await db.customModules.bulkPut(data.customModules); }
     if (data.habits) { await db.habits.clear(); await db.habits.bulkPut(data.habits); }
     if (data.settings) await db.settings.put({ ...data.settings, id: 'default' });
-  }, []);
+    // Reload settings into Zustand
+    await loadSettings();
+  }, [loadSettings]);
 
   // Backward-compat: allows existing pages to do updateData({ websites: [...] }) etc.
   const updateData = useCallback(async (partial: Record<string, any>): Promise<void> => {
@@ -324,12 +318,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     for (const [key, value] of Object.entries(partial)) {
       if (key === 'userName' || key === 'userRole') {
         await db.settings.update('default', { [key]: value });
+        await zustandUpdateSettings({ [key]: value } as any);
       } else if (tableMap[key] && Array.isArray(value)) {
         await tableMap[key].clear();
         if (value.length > 0) await tableMap[key].bulkPut(value);
       }
     }
-  }, []);
+  }, [zustandUpdateSettings]);
 
   const value: DashboardContextValue = {
     websites, tasks, repos, buildProjects, links, notes, payments, ideas, credentials, customModules, habits,

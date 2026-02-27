@@ -4,6 +4,7 @@ import StatusBar from '@/components/StatusBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDashboard } from '@/contexts/DashboardContext';
+import { useNavigationStore } from '@/stores/navigationStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { lazy, Suspense } from 'react';
 
@@ -67,17 +68,30 @@ function LoadingSkeleton() {
 }
 
 export default function DashboardLayout() {
-  const { activeSection, isLoading } = useDashboard();
+  const { isLoading } = useDashboard();
+  const { activeSection } = useNavigationStore();
   const Section = sectionMap[activeSection] || DashboardHome;
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse">
-            <span className="text-white font-bold text-lg">M</span>
-          </div>
-          <div className="text-sm text-muted-foreground">Loading Mission Control...</div>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="w-12 h-12 mx-auto rounded-xl gradient-primary flex items-center justify-center shadow-[var(--shadow-primary)]"
+          >
+            <span className="text-primary-foreground font-bold text-lg">N</span>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-sm text-muted-foreground"
+          >
+            Loading Mission Control...
+          </motion.div>
         </div>
       </div>
     );
@@ -102,7 +116,7 @@ export default function DashboardLayout() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <Section sectionId={activeSection} key={activeSection} {...({ sectionId: activeSection } as any)} />
                 </motion.div>

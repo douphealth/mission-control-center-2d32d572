@@ -1,4 +1,6 @@
 import { useDashboard } from '@/contexts/DashboardContext';
+import { useNavigationStore } from '@/stores/navigationStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import {
@@ -51,7 +53,7 @@ const navGroups = [
     ],
   },
   {
-    label: 'SUPPORT',
+    label: 'SYSTEM',
     items: [
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
@@ -59,7 +61,9 @@ const navGroups = [
 ];
 
 export default function Sidebar() {
-  const { activeSection, setActiveSection, sidebarOpen, setSidebarOpen, sidebarCollapsed, updateSettings, theme, toggleTheme, userName, userRole, tasks, payments, ideas, customModules, addItem, genId } = useDashboard();
+  const { tasks, payments, ideas, customModules, addItem, genId } = useDashboard();
+  const { activeSection, setActiveSection, sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed } = useNavigationStore();
+  const { userName, userRole, theme, toggleTheme } = useSettingsStore();
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [newModName, setNewModName] = useState('');
   const [newModEmoji, setNewModEmoji] = useState('📁');
@@ -127,9 +131,13 @@ export default function Sidebar() {
 
         {/* Logo / Brand */}
         <div className={`h-14 flex items-center border-b border-border/40 ${isCollapsed ? 'justify-center px-2' : 'px-4 gap-3'}`}>
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0">
+          <motion.div
+            whileHover={{ rotate: [0, -8, 8, 0] }}
+            transition={{ duration: 0.5 }}
+            className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0 shadow-[var(--shadow-primary)]"
+          >
             N
-          </div>
+          </motion.div>
           {!isCollapsed && (
             <div className="min-w-0">
               <div className="font-bold text-sm text-foreground tracking-tight">Nexus</div>
@@ -140,8 +148,8 @@ export default function Sidebar() {
 
         {/* Collapse toggle */}
         <button
-          onClick={() => updateSettings({ sidebarCollapsed: !isCollapsed })}
-          className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-50 w-6 h-6 items-center justify-center rounded-full bg-card border border-border shadow-sm hover:bg-secondary transition-colors"
+          onClick={() => setSidebarCollapsed(!isCollapsed)}
+          className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 z-50 w-6 h-6 items-center justify-center rounded-full bg-card border border-border shadow-sm hover:bg-secondary hover:scale-110 transition-all"
         >
           {isCollapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
         </button>
@@ -155,10 +163,10 @@ export default function Sidebar() {
                   <span className="text-[10px] font-semibold tracking-widest text-muted-foreground/40 uppercase">
                     {group.label}
                   </span>
-                  {group.label !== 'SUPPORT' && (
+                  {group.label !== 'SYSTEM' && (
                     <button
                       onClick={() => setAddingTo(addingTo === group.label ? null : group.label)}
-                      className="p-0.5 rounded text-muted-foreground/25 hover:text-primary transition-all"
+                      className="p-0.5 rounded text-muted-foreground/25 hover:text-primary transition-all hover:scale-110"
                       title={`Add to ${group.label}`}
                     >
                       <Plus size={11} />
@@ -171,17 +179,26 @@ export default function Sidebar() {
                   const active = activeSection === item.id;
                   const badge = getBadge(item.id);
                   return (
-                    <button
+                    <motion.button
                       key={item.id}
                       onClick={() => { setActiveSection(item.id); setSidebarOpen(false); }}
+                      whileHover={{ x: isCollapsed ? 0 : 2 }}
+                      whileTap={{ scale: 0.98 }}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 group relative
                         ${isCollapsed ? 'justify-center px-0' : ''}
                         ${active
-                          ? 'bg-primary/8 text-primary'
+                          ? 'bg-primary/8 text-primary shadow-sm'
                           : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
                         }`}
                       title={isCollapsed ? item.label : undefined}
                     >
+                      {active && (
+                        <motion.div
+                          layoutId="sidebarActiveIndicator"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary"
+                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                        />
+                      )}
                       <item.icon size={16} strokeWidth={active ? 2 : 1.6} className="flex-shrink-0" />
                       {!isCollapsed && <span className="flex-1 text-left">{item.label}</span>}
                       {badge !== null && !isCollapsed && (
@@ -190,7 +207,7 @@ export default function Sidebar() {
                       {badge !== null && isCollapsed && (
                         <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[8px] font-bold rounded-full flex items-center justify-center">{badge}</span>
                       )}
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
@@ -230,15 +247,17 @@ export default function Sidebar() {
               )}
               <div className="space-y-0.5">
                 {customModules.filter(m => m.visible).sort((a, b) => a.order - b.order).map(mod => (
-                  <button key={mod.id}
+                  <motion.button key={mod.id}
                     onClick={() => { setActiveSection(`custom-${mod.id}`); setSidebarOpen(false); }}
+                    whileHover={{ x: isCollapsed ? 0 : 2 }}
+                    whileTap={{ scale: 0.98 }}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150
                       ${isCollapsed ? 'justify-center px-0' : ''}
                       ${activeSection === `custom-${mod.id}` ? 'bg-primary/8 text-primary' : 'text-muted-foreground hover:bg-secondary/60'}`}
                     title={isCollapsed ? mod.name : undefined}>
                     <span className="text-sm">{mod.icon}</span>
                     {!isCollapsed && <span className="flex-1 text-left">{mod.name}</span>}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -248,11 +267,12 @@ export default function Sidebar() {
           {customModules.filter(m => m.visible).length === 0 && !isCollapsed && (
             <div>
               {addingTo !== 'NEW_CUSTOM' ? (
-                <button onClick={() => setAddingTo('NEW_CUSTOM')}
+                <motion.button onClick={() => setAddingTo('NEW_CUSTOM')}
+                  whileHover={{ scale: 1.01 }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-muted-foreground/30 hover:text-primary hover:bg-secondary/40 transition-all border border-dashed border-border/30 hover:border-primary/20">
                   <Plus size={15} />
                   <span>Add Custom Module</span>
-                </button>
+                </motion.button>
               ) : (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                   <div className="p-2.5 rounded-lg bg-secondary/40 border border-border/40 space-y-2">
@@ -280,7 +300,7 @@ export default function Sidebar() {
         <div className="border-t border-border/40 p-2.5 space-y-1">
           {!isCollapsed && (
             <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-secondary/30">
-              <div className="w-7 h-7 rounded-md bg-success/15 flex items-center justify-center text-success text-xs font-bold flex-shrink-0">
+              <div className="w-7 h-7 rounded-md gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold flex-shrink-0 shadow-sm">
                 {userName.charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
@@ -289,14 +309,21 @@ export default function Sidebar() {
               </div>
             </div>
           )}
-          <button
+          <motion.button
             onClick={toggleTheme}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
             className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-all ${isCollapsed ? 'justify-center' : ''}`}
             title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
           >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            <motion.div
+              animate={{ rotate: theme === 'dark' ? 0 : 180 }}
+              transition={{ duration: 0.3 }}
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </motion.div>
             {!isCollapsed && <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
-          </button>
+          </motion.button>
         </div>
       </motion.aside>
     </>
