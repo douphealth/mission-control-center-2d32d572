@@ -1,9 +1,12 @@
 import { useDashboard } from "@/contexts/DashboardContext";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Trash2, Plus, Edit2, Search } from "lucide-react";
+import { ExternalLink, Trash2, Plus, Edit2, Search, CheckSquare } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
-import type { BuildProject } from "@/lib/store";
+import type { BuildProject } from "@/lib/db";
+import { useBulkActions } from "@/hooks/useBulkActions";
+import BulkActionBar from "@/components/BulkActionBar";
+import { toast } from "sonner";
 
 const platformStyle: Record<string, { badge: string; emoji: string; label: string }> = {
   bolt: { badge: "bg-blue-500/10 text-blue-500", emoji: "⚡", label: "Bolt" },
@@ -21,25 +24,41 @@ export default function BuildsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBuild);
+  const bulk = useBulkActions<BuildProject>();
 
   const filtered = buildProjects
-    .filter(b => filterPlatform === "all" || b.platform === filterPlatform)
-    .filter(b => b.name.toLowerCase().includes(search.toLowerCase()));
+    .filter((b: any) => filterPlatform === "all" || b.platform === filterPlatform)
+    .filter((b: any) => b.name.toLowerCase().includes(search.toLowerCase()));
 
   const openAdd = () => { setEditId(null); setForm(emptyBuild); setModalOpen(true); };
-  const openEdit = (b: BuildProject) => { setEditId(b.id); const { id, ...rest } = b; setForm(rest); setModalOpen(true); };
+  const openEdit = (b: any) => { setEditId(b.id); const { id, ...rest } = b; setForm(rest); setModalOpen(true); };
   const saveForm = () => {
     if (!form.name.trim()) return;
     const now = new Date().toISOString().split("T")[0];
     if (editId) {
-      updateData({ buildProjects: buildProjects.map(b => b.id === editId ? { ...b, ...form, lastWorkedOn: now } : b) });
+      updateData({ buildProjects: buildProjects.map((b: any) => b.id === editId ? { ...b, ...form, lastWorkedOn: now } : b) });
     } else {
-      updateData({ buildProjects: [{ id: Math.random().toString(36).slice(2, 10), ...form, startedDate: now, lastWorkedOn: now }, ...buildProjects] });
+      updateData({ buildProjects: [{ id: Math.random().toString(36).slice(2, 10), ...form, startedDate: now, lastWorkedOn: now }, ...buildProjects] as any });
     }
     setModalOpen(false);
   };
-  const deleteBuild = (id: string) => { if (confirm("Delete this project?")) updateData({ buildProjects: buildProjects.filter(b => b.id !== id) }); };
+  const deleteBuild = (id: string) => { if (confirm("Delete this project?")) updateData({ buildProjects: buildProjects.filter((b: any) => b.id !== id) }); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
+
+  const bulkDelete = useCallback(() => {
+    if (bulk.selectedCount === 0) return;
+    if (!confirm(`Delete ${bulk.selectedCount} project(s)?`)) return;
+    updateData({ buildProjects: buildProjects.filter((b: any) => !bulk.selectedIds.has(b.id)) });
+    toast.success(`${bulk.selectedCount} projects deleted`);
+    bulk.clearSelection();
+  }, [bulk, buildProjects, updateData]);
+
+  const bulkUpdateStatus = useCallback((status: string) => {
+    const now = new Date().toISOString().split("T")[0];
+    updateData({ buildProjects: buildProjects.map((b: any) => bulk.selectedIds.has(b.id) ? { ...b, status, lastWorkedOn: now } : b) });
+    toast.success(`${bulk.selectedCount} projects updated`);
+    bulk.clearSelection();
+  }, [bulk, buildProjects, updateData]);
 
   return (
     <div className="space-y-5">
@@ -48,12 +67,29 @@ export default function BuildsPage() {
           <h1 className="text-2xl font-bold text-foreground">Build Projects</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{buildProjects.length} projects across platforms</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
-          <Plus size={16} /> New Project
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={bulk.toggleBulkMode}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+            <Plus size={16} /> New Project
+          </button>
+        </div>
       </div>
 
-      {/* Platform quick links + filter */}
+      {bulk.bulkMode && (
+        <BulkActionBar
+          selectedCount={bulk.selectedCount} totalCount={filtered.length}
+          onSelectAll={() => bulk.selectAll(filtered)} allSelected={bulk.selectedCount === filtered.length && filtered.length > 0}
+          onDelete={bulkDelete}
+          dropdowns={[{ label: "Set Status...", onSelect: bulkUpdateStatus, options: [
+            { value: "ideation", label: "💭 Ideation" }, { value: "building", label: "🔨 Building" },
+            { value: "testing", label: "🧪 Testing" }, { value: "deployed", label: "🚀 Deployed" },
+          ]}]}
+        />
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 max-w-xs">
           <Search size={14} className="text-muted-foreground" />
@@ -76,16 +112,20 @@ export default function BuildsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((bp, i) => {
-          const ps = platformStyle[bp.platform];
+        {filtered.map((bp: any, i: number) => {
+          const ps = platformStyle[bp.platform] || platformStyle.bolt;
           return (
-            <motion.div key={bp.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="card-elevated p-5 space-y-3 group">
+            <motion.div key={bp.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              onClick={bulk.bulkMode ? () => bulk.toggleSelect(bp.id) : undefined}
+              className={`card-elevated p-5 space-y-3 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(bp.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
               <div className="flex items-start justify-between">
+                {bulk.bulkMode && (
+                  <div className="mr-2">{bulk.isSelected(bp.id) ? <CheckSquare size={16} className="text-primary" /> : <div className="w-4 h-4 rounded border border-muted-foreground/30" />}</div>
+                )}
                 <h3 className="font-semibold text-card-foreground">{bp.name}</h3>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ps.badge}`}>{ps.emoji} {bp.platform}</span>
               </div>
               <p className="text-sm text-muted-foreground">{bp.description}</p>
-              {/* Status pipeline */}
               <div className="flex items-center gap-1">
                 {(["ideation", "building", "testing", "deployed"] as const).map((s, idx) => (
                   <div key={s} className="flex items-center gap-1">
@@ -96,17 +136,19 @@ export default function BuildsPage() {
                 ))}
               </div>
               <div className="flex flex-wrap gap-1">
-                {bp.techStack.map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground">{t}</span>)}
+                {bp.techStack.map((t: string) => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground">{t}</span>)}
               </div>
               {bp.nextSteps && <p className="text-xs text-muted-foreground/80 italic">💡 Next: {bp.nextSteps}</p>}
               <div className="flex gap-2 pt-1">
                 {bp.projectUrl && <a href={bp.projectUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1"><ExternalLink size={12} /> Open</a>}
                 {bp.deployedUrl && <a href={bp.deployedUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">🚀 Live</a>}
                 {bp.githubRepo && <a href={bp.githubRepo} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">📂 GitHub</a>}
-                <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEdit(bp)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
-                  <button onClick={() => deleteBuild(bp.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
-                </div>
+                {!bulk.bulkMode && (
+                  <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openEdit(bp)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
+                    <button onClick={() => deleteBuild(bp.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
+                  </div>
+                )}
               </div>
             </motion.div>
           );

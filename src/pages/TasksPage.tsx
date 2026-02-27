@@ -149,7 +149,7 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                     {STATUSES.map(s => (
                       <button key={s.id} type="button" onClick={() => uf("status", s.id)}
                         className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${form.status === s.id ? "ring-2 ring-offset-1 ring-offset-card" : "bg-secondary opacity-60 hover:opacity-100"}`}
-                        style={form.status === s.id ? { background: s.color + "22", color: s.color, ringColor: s.color } : {}}>
+                        style={form.status === s.id ? { background: s.color + "22", color: s.color } : {}}>
                         {s.label}
                       </button>
                     ))}
@@ -161,7 +161,7 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                     {PRIORITIES.map(p => (
                       <button key={p.id} type="button" onClick={() => uf("priority", p.id)}
                         className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${p.bg} ${form.priority === p.id ? "ring-2 ring-offset-1 ring-offset-card" : "opacity-50 hover:opacity-100"}`}
-                        style={form.priority === p.id ? { ringColor: p.color } : {}}>
+                        style={form.priority === p.id ? {} : {}}>
                         {p.label}
                       </button>
                     ))}
@@ -269,8 +269,8 @@ function KanbanCard({
     <motion.div
       layout
       draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      onDragStart={onDragStart as any}
+      onDragEnd={onDragEnd as any}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: isDragging ? 0.4 : 1, y: 0, scale: isDragging ? 0.97 : 1 }}
       exit={{ opacity: 0, scale: 0.95 }}

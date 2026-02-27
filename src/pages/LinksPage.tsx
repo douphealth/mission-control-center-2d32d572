@@ -1,9 +1,12 @@
 import { useDashboard } from "@/contexts/DashboardContext";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Copy, Pin, PinOff, Trash2, Search, Plus, Edit2 } from "lucide-react";
+import { ExternalLink, Copy, Pin, PinOff, Trash2, Search, Plus, Edit2, CheckSquare } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect } from "@/components/FormModal";
 import type { LinkItem } from "@/lib/store";
+import { useBulkActions } from "@/hooks/useBulkActions";
+import BulkActionBar from "@/components/BulkActionBar";
+import { toast } from "sonner";
 
 const emptyLink: Omit<LinkItem, "id"> = { title: "", url: "", category: "Tools", status: "active", description: "", dateAdded: new Date().toISOString().split("T")[0], pinned: false };
 
@@ -14,6 +17,7 @@ export default function LinksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyLink);
+  const bulk = useBulkActions<LinkItem>();
 
   const categories = ["all", ...Array.from(new Set(links.map(l => l.category)))];
   const filtered = links
@@ -36,6 +40,26 @@ export default function LinksPage() {
   const deleteLink = (id: string) => updateData({ links: links.filter(l => l.id !== id) });
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
+  const bulkDelete = useCallback(() => {
+    if (bulk.selectedCount === 0) return;
+    if (!confirm(`Delete ${bulk.selectedCount} link(s)?`)) return;
+    updateData({ links: links.filter(l => !bulk.selectedIds.has(l.id)) });
+    toast.success(`${bulk.selectedCount} links deleted`);
+    bulk.clearSelection();
+  }, [bulk, links, updateData]);
+
+  const bulkUpdateCategory = useCallback((cat: string) => {
+    updateData({ links: links.map(l => bulk.selectedIds.has(l.id) ? { ...l, category: cat } : l) });
+    toast.success(`${bulk.selectedCount} links updated`);
+    bulk.clearSelection();
+  }, [bulk, links, updateData]);
+
+  const bulkTogglePin = useCallback(() => {
+    updateData({ links: links.map(l => bulk.selectedIds.has(l.id) ? { ...l, pinned: !l.pinned } : l) });
+    toast.success(`${bulk.selectedCount} links toggled pin`);
+    bulk.clearSelection();
+  }, [bulk, links, updateData]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -43,10 +67,29 @@ export default function LinksPage() {
           <h1 className="text-2xl font-bold text-foreground">Links Hub</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{links.length} links · {links.filter(l => l.pinned).length} pinned</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
-          <Plus size={16} /> Add Link
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={bulk.toggleBulkMode}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+            <Plus size={16} /> Add Link
+          </button>
+        </div>
       </div>
+
+      {bulk.bulkMode && (
+        <BulkActionBar
+          selectedCount={bulk.selectedCount}
+          totalCount={filtered.length}
+          onSelectAll={() => bulk.selectAll(filtered)}
+          allSelected={bulk.selectedCount === filtered.length && filtered.length > 0}
+          onDelete={bulkDelete}
+          dropdowns={[
+            { label: "Set Category...", onSelect: bulkUpdateCategory, options: ["Tools", "Documentation", "Resources", "APIs", "Design", "Learning", "Social Media", "Hosting", "Domains", "Other"].map(c => ({ value: c, label: c })) },
+          ]}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 max-w-xs">
@@ -64,7 +107,12 @@ export default function LinksPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((link, i) => (
-          <motion.div key={link.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="card-elevated p-4 flex items-start gap-3 group">
+          <motion.div key={link.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+            onClick={bulk.bulkMode ? () => bulk.toggleSelect(link.id) : undefined}
+            className={`card-elevated p-4 flex items-start gap-3 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(link.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
+            {bulk.bulkMode && (
+              <div className="mt-1">{bulk.isSelected(link.id) ? <CheckSquare size={16} className="text-primary" /> : <div className="w-4 h-4 rounded border border-muted-foreground/30" />}</div>
+            )}
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
               {link.title.charAt(0)}
             </div>
@@ -77,13 +125,15 @@ export default function LinksPage() {
               <a href={link.url.match(/^https?:\/\//) ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline truncate block mt-0.5">{link.url}</a>
               <span className="badge-muted text-[10px] mt-1.5">{link.category}</span>
             </div>
-            <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <a href={link.url.match(/^https?:\/\//) ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary p-0.5"><ExternalLink size={13} /></a>
-              <button onClick={() => navigator.clipboard.writeText(link.url)} className="text-muted-foreground hover:text-foreground p-0.5"><Copy size={13} /></button>
-              <button onClick={() => togglePin(link.id)} className="text-muted-foreground hover:text-warning p-0.5">{link.pinned ? <PinOff size={13} /> : <Pin size={13} />}</button>
-              <button onClick={() => openEdit(link)} className="text-muted-foreground hover:text-foreground p-0.5"><Edit2 size={13} /></button>
-              <button onClick={() => deleteLink(link.id)} className="text-muted-foreground hover:text-destructive p-0.5"><Trash2 size={13} /></button>
-            </div>
+            {!bulk.bulkMode && (
+              <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a href={link.url.match(/^https?:\/\//) ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary p-0.5"><ExternalLink size={13} /></a>
+                <button onClick={() => navigator.clipboard.writeText(link.url)} className="text-muted-foreground hover:text-foreground p-0.5"><Copy size={13} /></button>
+                <button onClick={() => togglePin(link.id)} className="text-muted-foreground hover:text-warning p-0.5">{link.pinned ? <PinOff size={13} /> : <Pin size={13} />}</button>
+                <button onClick={() => openEdit(link)} className="text-muted-foreground hover:text-foreground p-0.5"><Edit2 size={13} /></button>
+                <button onClick={() => deleteLink(link.id)} className="text-muted-foreground hover:text-destructive p-0.5"><Trash2 size={13} /></button>
+              </div>
+            )}
           </motion.div>
         ))}
       </div>

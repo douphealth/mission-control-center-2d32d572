@@ -289,7 +289,7 @@ export function parseImportData(text: string, fileName?: string): ParsedData {
         }
         return obj;
       });
-      const sourceFields = rows.length > 0 ? [...new Set(rows.flatMap((r: Record<string, string>) => Object.keys(r)))] : [];
+      const sourceFields: string[] = rows.length > 0 ? [...new Set(rows.flatMap((r: Record<string, string>) => Object.keys(r)))] as string[] : [];
       return { rows, sourceFields, detectedFormat: 'json' };
     } catch { /* fall through */ }
   }
