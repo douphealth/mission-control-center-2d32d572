@@ -70,6 +70,7 @@ function LoadingSkeleton() {
 export default function DashboardLayout() {
   const { isLoading } = useDashboard();
   const { activeSection } = useNavigationStore();
+  const isMobile = useIsMobile();
   const Section = sectionMap[activeSection] || DashboardHome;
 
   if (isLoading) {
@@ -97,7 +98,6 @@ export default function DashboardLayout() {
     );
   }
 
-  const isMobile = useIsMobile();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
