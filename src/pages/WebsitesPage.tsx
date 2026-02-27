@@ -65,6 +65,8 @@ export default function WebsitesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   // ─── Derived data ──────────────────────────────────────────────
 
   const categories = useMemo(() => {
@@ -150,10 +152,15 @@ export default function WebsitesPage() {
   };
 
   const deleteWebsite = (id: string) => {
-    if (!confirm("Are you sure you want to delete this website? This action cannot be undone.")) return;
-    updateData({ websites: websites.filter(w => w.id !== id) });
-    toast.success("Website deleted");
+    setPendingDeleteId(id);
   };
+
+  const confirmDeleteSingle = useCallback(() => {
+    if (!pendingDeleteId) return;
+    updateData({ websites: websites.filter(w => w.id !== pendingDeleteId) });
+    toast.success("Website deleted");
+    setPendingDeleteId(null);
+  }, [pendingDeleteId, websites, updateData]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -173,11 +180,15 @@ export default function WebsitesPage() {
 
   const bulkDelete = useCallback(() => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Delete ${selectedIds.size} website(s)? This cannot be undone.`)) return;
+    setPendingBulkDelete(true);
+  }, [selectedIds]);
+
+  const confirmBulkDelete = useCallback(() => {
     updateData({ websites: websites.filter(w => !selectedIds.has(w.id)) });
     toast.success(`${selectedIds.size} websites deleted`);
     setSelectedIds(new Set());
     setBulkMode(false);
+    setPendingBulkDelete(false);
   }, [selectedIds, websites, updateData]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
@@ -796,6 +807,49 @@ export default function WebsitesPage() {
           </div>
         </div>
       </FormModal>
+
+      {/* Delete confirmation dialogs */}
+      <AnimatePresence>
+        {(pendingDeleteId || pendingBulkDelete) && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => { setPendingDeleteId(null); setPendingBulkDelete(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-card border border-border/30 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                  <Trash2 size={18} className="text-destructive" />
+                </div>
+                <h3 className="font-bold text-card-foreground">Confirm Delete</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-5">
+                {pendingBulkDelete
+                  ? `Delete ${selectedIds.size} website(s)? This cannot be undone.`
+                  : "Are you sure you want to delete this website? This action cannot be undone."}
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => { setPendingDeleteId(null); setPendingBulkDelete(false); }}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-secondary/50 hover:bg-secondary transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
