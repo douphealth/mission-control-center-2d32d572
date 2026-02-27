@@ -5,19 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CommandPalette from './CommandPalette';
 import BulkImportModal from './BulkImportModal';
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good Morning';
-  if (h < 18) return 'Good Afternoon';
-  return 'Good Evening';
-}
-
 function formatDate() {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-function formatTime() {
-  return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 const quickAddItems = [
@@ -35,7 +24,6 @@ const quickAddItems = [
 
 export default function TopBar() {
   const { userName, setSidebarOpen, setActiveSection, tasks, exportAllData } = useDashboard();
-  const [time, setTime] = useState(formatTime());
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -44,11 +32,6 @@ export default function TopBar() {
   const overdueCount = tasks.filter(t => t.status !== 'done' && t.dueDate < today).length;
   const dueTodayCount = tasks.filter(t => t.status !== 'done' && t.dueDate === today).length;
   const notifCount = overdueCount + dueTodayCount;
-
-  useEffect(() => {
-    const i = setInterval(() => setTime(formatTime()), 1000);
-    return () => clearInterval(i);
-  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -82,97 +65,95 @@ export default function TopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-background/70 backdrop-blur-2xl border-b border-border/40 px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center gap-2 sm:gap-3">
-        {/* Mobile: greeting is compact */}
-        <div className="flex-1 min-w-0">
-          <h2 className="text-sm sm:text-base font-bold truncate text-foreground">
-            {getGreeting()}, {userName} 👋
-          </h2>
-          <div className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block font-medium">{formatDate()} · {time}</div>
-        </div>
+      <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-xl border-b border-border/40 px-3 sm:px-4 lg:px-6 h-14 flex items-center gap-2">
+        {/* Mobile menu */}
+        <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground p-1.5 -ml-1">
+          <Menu size={18} />
+        </button>
 
-        {/* Search — icon only on mobile, full bar on md+ */}
+        {/* Search */}
         <button
           onClick={() => setCmdOpen(true)}
-          className="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto md:bg-secondary/60 rounded-xl sm:px-3 sm:py-2 sm:gap-2 md:w-64 lg:w-80 cursor-pointer hover:bg-secondary/80 transition-colors md:border md:border-border/30"
+          className="flex items-center gap-2 flex-1 max-w-md h-9 px-3 rounded-lg bg-secondary/50 border border-border/30 hover:border-border/60 transition-all cursor-pointer"
         >
-          <Search size={18} className="text-muted-foreground flex-shrink-0" />
-          <span className="text-sm text-muted-foreground flex-1 text-left hidden md:inline">Search everything...</span>
-          <kbd className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono hidden md:inline">⌘K</kbd>
+          <Search size={14} className="text-muted-foreground/60 flex-shrink-0" />
+          <span className="text-[13px] text-muted-foreground/50 flex-1 text-left hidden sm:inline">Search...</span>
+          <kbd className="text-[10px] text-muted-foreground/40 bg-background px-1.5 py-0.5 rounded font-mono hidden md:inline border border-border/30">⌘K</kbd>
         </button>
 
-        {/* Import — hidden on mobile */}
-        <button
-          onClick={() => setImportOpen(true)}
-          className="hidden sm:flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors px-2.5 py-2 rounded-xl hover:bg-secondary"
-          title="Bulk Import CSV/JSON"
-        >
-          <Upload size={18} />
-        </button>
+        <div className="flex items-center gap-1 ml-auto">
+          {/* Date */}
+          <div className="hidden md:flex items-center text-xs text-muted-foreground font-medium px-2.5 py-1.5 rounded-lg bg-secondary/30 mr-1">
+            📅 {formatDate()}
+          </div>
 
-        {/* Export — hidden on mobile */}
-        <button
-          onClick={handleExport}
-          className="hidden sm:flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors px-2.5 py-2 rounded-xl hover:bg-secondary"
-          title="Export All Data"
-        >
-          <Download size={18} />
-        </button>
-
-        {/* Notifications */}
-        <button className="relative text-muted-foreground hover:text-foreground transition-colors p-2 rounded-xl hover:bg-secondary">
-          <Bell size={18} />
-          {notifCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center animate-pulse">
-              {notifCount}
-            </span>
-          )}
-        </button>
-
-        {/* Quick Add */}
-        <div className="relative">
-          <button
-            onClick={() => setQuickAddOpen(!quickAddOpen)}
-            className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-blue-600 text-primary-foreground flex items-center justify-center hover:opacity-90 transition-all shadow-lg shadow-primary/25"
-          >
-            <Plus size={18} className={`transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} />
+          {/* Import */}
+          <button onClick={() => setImportOpen(true)}
+            className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-secondary/50 transition-all" title="Import">
+            <Upload size={15} />
           </button>
 
-          <AnimatePresence>
-            {quickAddOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setQuickAddOpen(false)} />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 z-50 w-56 bg-card/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-border/50 p-2"
-                >
-                  <div className="px-3 py-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">Quick Add</div>
-                  {quickAddItems.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleQuickAdd(item.id)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-card-foreground hover:bg-secondary transition-colors"
-                    >
-                      <span className="text-base">{item.emoji}</span>
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  ))}
-                  <div className="border-t border-border/50 mt-1 pt-1">
-                    <button
-                      onClick={() => { setQuickAddOpen(false); setImportOpen(true); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-card-foreground hover:bg-secondary transition-colors"
-                    >
-                      <span className="text-base">📥</span>
-                      <span className="font-medium">Bulk Import</span>
-                    </button>
-                  </div>
-                </motion.div>
-              </>
+          {/* Export */}
+          <button onClick={handleExport}
+            className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-secondary/50 transition-all" title="Export">
+            <Download size={15} />
+          </button>
+
+          {/* Notifications */}
+          <button className="relative flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-secondary/50 transition-all">
+            <Bell size={15} />
+            {notifCount > 0 && (
+              <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center">
+                {notifCount}
+              </span>
             )}
-          </AnimatePresence>
+          </button>
+
+          {/* Quick Add */}
+          <div className="relative">
+            <button
+              onClick={() => setQuickAddOpen(!quickAddOpen)}
+              className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-all"
+            >
+              <Plus size={15} className={`transition-transform duration-150 ${quickAddOpen ? 'rotate-45' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {quickAddOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setQuickAddOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                    transition={{ duration: 0.12 }}
+                    className="absolute right-0 top-full mt-1.5 z-50 w-52 bg-card rounded-xl shadow-lg border border-border/50 p-1.5"
+                  >
+                    <div className="px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-widest">Quick Add</div>
+                    {quickAddItems.map(item => (
+                      <button key={item.id} onClick={() => handleQuickAdd(item.id)}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-foreground hover:bg-secondary/60 transition-colors">
+                        <span className="text-sm">{item.emoji}</span>
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    ))}
+                    <div className="border-t border-border/40 mt-1 pt-1">
+                      <button onClick={() => { setQuickAddOpen(false); setImportOpen(true); }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-foreground hover:bg-secondary/60 transition-colors">
+                        <span className="text-sm">📥</span>
+                        <span className="font-medium">Bulk Import</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* User avatar */}
+          <div className="hidden sm:flex w-8 h-8 rounded-lg bg-secondary items-center justify-center text-xs font-semibold text-foreground ml-0.5">
+            {userName.charAt(0)}
+          </div>
         </div>
       </header>
 

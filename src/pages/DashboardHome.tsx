@@ -12,7 +12,8 @@ import {
   Clock, ArrowRight, Zap, Calendar, FileText, Target, Sparkles, Settings2,
   DollarSign, Lightbulb, Eye, EyeOff, ArrowUpRight, ArrowDownRight,
   Pin, Lock, Unlock, ExternalLink, Activity, GripVertical, Flame,
-  Plus, ChevronRight, MoreHorizontal, BarChart3
+  Plus, ChevronRight, MoreHorizontal, BarChart3, Users, CreditCard,
+  ArrowUp, ArrowDown
 } from 'lucide-react';
 import {
   widgetDefinitions, getDefaultLayouts, loadSavedLayout, saveLayout,
@@ -23,16 +24,16 @@ import 'react-grid-layout/css/styles.css';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const fadeUp = (i: number) => ({
-  initial: { opacity: 0, y: 12 },
+  initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.35, delay: i * 0.04, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+  transition: { duration: 0.3, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
 });
 
-const priorityConfig: Record<string, { color: string; bg: string; ring: string; label: string }> = {
-  critical: { color: 'text-rose-500', bg: 'bg-rose-500/10', ring: 'ring-rose-500/20', label: 'Critical' },
-  high: { color: 'text-amber-500', bg: 'bg-amber-500/10', ring: 'ring-amber-500/20', label: 'High' },
-  medium: { color: 'text-blue-500', bg: 'bg-blue-500/10', ring: 'ring-blue-500/20', label: 'Medium' },
-  low: { color: 'text-emerald-500', bg: 'bg-emerald-500/10', ring: 'ring-emerald-500/20', label: 'Low' },
+const priorityConfig: Record<string, { color: string; bg: string; label: string }> = {
+  critical: { color: 'text-destructive', bg: 'bg-destructive/8', label: 'Critical' },
+  high: { color: 'text-warning', bg: 'bg-warning/8', label: 'High' },
+  medium: { color: 'text-info', bg: 'bg-info/8', label: 'Medium' },
+  low: { color: 'text-success', bg: 'bg-success/8', label: 'Low' },
 };
 
 export default function DashboardHome() {
@@ -71,10 +72,10 @@ export default function DashboardHome() {
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
   const stats = [
-    { label: 'Websites', value: websites.length, sub: `${activeSites} active`, icon: Globe, color: 'from-blue-500 to-cyan-400', iconBg: 'bg-blue-500/10', iconColor: 'text-blue-500', section: 'websites' },
-    { label: 'Repositories', value: repos.length, sub: `${repos.filter(r => r.status === 'active').length} active`, icon: Github, color: 'from-violet-500 to-purple-400', iconBg: 'bg-violet-500/10', iconColor: 'text-violet-500', section: 'github' },
-    { label: 'Projects', value: buildProjects.length, sub: `${activeBuilds} in progress`, icon: Hammer, color: 'from-amber-500 to-orange-400', iconBg: 'bg-amber-500/10', iconColor: 'text-amber-500', section: 'builds' },
-    { label: 'Tasks', value: openTasks, sub: dueToday > 0 ? `${dueToday} due today` : overdueTasks > 0 ? `${overdueTasks} overdue` : 'All on track ✨', icon: CheckSquare, color: overdueTasks > 0 ? 'from-rose-500 to-red-400' : 'from-emerald-500 to-green-400', iconBg: overdueTasks > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10', iconColor: overdueTasks > 0 ? 'text-rose-500' : 'text-emerald-500', section: 'tasks' },
+    { label: 'Active Sites', value: activeSites, total: websites.length, change: '+2', trend: 'up' as const, icon: Globe, accent: 'hsl(var(--info))', section: 'websites' },
+    { label: 'Total Revenue', value: fmt(totalIncome), change: '+15.8%', trend: 'up' as const, icon: DollarSign, accent: 'hsl(var(--success))', section: 'payments' },
+    { label: 'Open Tasks', value: openTasks, change: overdueTasks > 0 ? `${overdueTasks} overdue` : 'On track', trend: overdueTasks > 0 ? 'down' as const : 'up' as const, icon: CheckSquare, accent: overdueTasks > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--success))', section: 'tasks' },
+    { label: 'Repositories', value: repos.length, change: `${repos.filter(r => r.status === 'active').length} active`, trend: 'up' as const, icon: Github, accent: 'hsl(var(--accent))', section: 'github' },
   ];
 
   const todayTasks = tasks.filter(t => t.status !== 'done').sort((a, b) => {
@@ -96,51 +97,49 @@ export default function DashboardHome() {
   ];
   const quote = quotes[new Date().getDate() % quotes.length];
 
-  const statusColors: Record<string, string> = { 'todo': 'bg-slate-400', 'in-progress': 'bg-blue-500', 'blocked': 'bg-red-500', 'done': 'bg-emerald-500' };
+  const statusColors: Record<string, string> = { 'todo': 'bg-muted-foreground/40', 'in-progress': 'bg-info', 'blocked': 'bg-destructive', 'done': 'bg-success' };
 
-  // ─── Widget Header Component ──────────────────────────────────────────
-  const WidgetHeader = ({ icon: Icon, iconBg, iconColor, title, action, actionLabel, actionSection }: any) => (
-    <div className="flex items-center justify-between mb-5">
+  // ─── Widget Header ─────────────────────────────────────────────────
+  const WidgetHeader = ({ icon: Icon, title, action, actionLabel, actionSection }: any) => (
+    <div className="flex items-center justify-between mb-4">
       <div className="flex items-center gap-2.5">
-        <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}>
-          <Icon size={17} className={iconColor} />
+        <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
+          <Icon size={15} className="text-foreground/70" />
         </div>
-        <h3 className="font-bold text-[15px] text-card-foreground tracking-tight">{title}</h3>
+        <h3 className="font-semibold text-sm text-foreground tracking-tight">{title}</h3>
       </div>
       {actionSection && (
-        <button onClick={() => setActiveSection(actionSection)} className="flex items-center gap-1 text-xs text-primary/80 hover:text-primary font-semibold transition-colors group">
-          {actionLabel || 'View All'} <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        <button onClick={() => setActiveSection(actionSection)} className="text-xs text-muted-foreground hover:text-primary font-medium transition-colors flex items-center gap-1">
+          {actionLabel || 'View All'} <ChevronRight size={12} />
         </button>
       )}
     </div>
   );
 
   // ─── Widgets ──────────────────────────────────────────────────────────
-  const widgetClass = 'h-full rounded-[20px] border border-border/30 overflow-hidden transition-all duration-300';
-  const widgetBg = 'bg-card/70 backdrop-blur-2xl hover:bg-card/85';
+  const widgetBase = 'h-full rounded-2xl border border-border/50 bg-card overflow-hidden transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-border/80';
 
   const renderWidget = (widgetId: string, i: number) => {
     switch (widgetId) {
       case 'stats':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-0`}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 h-full divide-x divide-border/20">
+          <div className={`${widgetBase} p-0`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 h-full">
               {stats.map((s, si) => (
                 <motion.div key={s.label} {...fadeUp(si)}
-                  className="p-5 cursor-pointer group hover:bg-primary/[0.03] transition-all relative" onClick={() => setActiveSection(s.section)}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`w-10 h-10 rounded-2xl ${s.iconBg} flex items-center justify-center transition-transform group-hover:scale-110`}>
-                      <s.icon size={19} className={s.iconColor} />
+                  className={`p-5 cursor-pointer group hover:bg-secondary/30 transition-all relative ${si < stats.length - 1 ? 'lg:border-r border-b lg:border-b-0 border-border/40' : ''}`}
+                  onClick={() => setActiveSection(s.section)}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${s.accent}12` }}>
+                      <s.icon size={18} style={{ color: s.accent }} />
                     </div>
-                    <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
-                      <TrendingUp size={12} />
+                    <div className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${s.trend === 'up' ? 'bg-success/8 text-success' : 'bg-destructive/8 text-destructive'}`}>
+                      {s.trend === 'up' ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+                      {s.change}
                     </div>
                   </div>
-                  <div className="text-[32px] font-extrabold text-card-foreground tracking-tighter leading-none mb-1">{s.value}</div>
-                  <div className="text-[13px] font-semibold text-muted-foreground/70">{s.label}</div>
-                  <div className="text-[11px] text-muted-foreground/50 mt-0.5">{s.sub}</div>
-                  {/* Bottom gradient accent */}
-                  <div className={`absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gradient-to-r ${s.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                  <div className="text-2xl font-bold text-foreground tracking-tight mb-0.5">{s.value}</div>
+                  <div className="text-xs text-muted-foreground font-medium">{s.label}</div>
                 </motion.div>
               ))}
             </div>
@@ -149,29 +148,29 @@ export default function DashboardHome() {
 
       case 'tasks-focus':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={Zap} iconBg="bg-amber-500/10" iconColor="text-amber-500" title="Today's Focus" actionSection="tasks" />
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={Zap} title="Today's Focus" actionSection="tasks" />
             {dueToday > 0 && (
-              <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-rose-500/5 border border-rose-500/10">
-                <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                <span className="text-xs font-semibold text-rose-500">{dueToday} task{dueToday > 1 ? 's' : ''} due today</span>
+              <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-destructive/5 border border-destructive/10">
+                <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                <span className="text-xs font-medium text-destructive">{dueToday} task{dueToday > 1 ? 's' : ''} due today</span>
               </div>
             )}
-            <div className="flex-1 overflow-auto space-y-1.5">
+            <div className="flex-1 overflow-auto space-y-1">
               {todayTasks.map((task, ti) => {
                 const pc = priorityConfig[task.priority] || priorityConfig.medium;
                 return (
                   <motion.div key={task.id} {...fadeUp(ti)}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/40 transition-all group cursor-pointer">
-                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusColors[task.status] || 'bg-slate-400'}`} />
-                    <span className="text-[13px] text-card-foreground flex-1 truncate font-medium">{task.title}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold ${pc.bg} ${pc.color}`}>{pc.label}</span>
-                    <span className={`text-[11px] font-mono flex-shrink-0 ${task.dueDate < today ? 'text-rose-500 font-bold' : 'text-muted-foreground/60'}`}>{task.dueDate}</span>
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/50 transition-all group cursor-pointer">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColors[task.status] || 'bg-muted-foreground/30'}`} />
+                    <span className="text-[13px] text-foreground flex-1 truncate">{task.title}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${pc.bg} ${pc.color}`}>{pc.label}</span>
+                    <span className={`text-[11px] font-mono flex-shrink-0 ${task.dueDate < today ? 'text-destructive font-semibold' : 'text-muted-foreground/50'}`}>{task.dueDate}</span>
                   </motion.div>
                 );
               })}
               {todayTasks.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground/60">
+                <div className="text-center py-10 text-muted-foreground/50">
                   <div className="text-3xl mb-2">🎉</div>
                   <p className="text-sm font-medium">All caught up!</p>
                 </div>
@@ -182,55 +181,54 @@ export default function DashboardHome() {
 
       case 'deadlines':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={Calendar} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="Upcoming" actionLabel="Calendar" actionSection="calendar" />
-            <div className="flex-1 overflow-auto space-y-1.5">
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={Calendar} title="Upcoming" actionLabel="Calendar" actionSection="calendar" />
+            <div className="flex-1 overflow-auto space-y-1">
               {upcomingDeadlines.map((task, ti) => {
-                const pc = priorityConfig[task.priority] || priorityConfig.medium;
                 const daysLeft = Math.ceil((new Date(task.dueDate).getTime() - Date.now()) / 86400000);
                 return (
-                  <motion.div key={task.id} {...fadeUp(ti)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/40 transition-all">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColors[task.status] || 'bg-slate-400'}`} />
-                    <span className="text-[13px] text-card-foreground flex-1 truncate font-medium">{task.title}</span>
-                    <span className={`text-[11px] px-2 py-1 rounded-lg font-semibold ${daysLeft <= 1 ? 'bg-rose-500/10 text-rose-500' : daysLeft <= 3 ? 'bg-amber-500/10 text-amber-500' : 'bg-secondary text-muted-foreground'}`}>
+                  <motion.div key={task.id} {...fadeUp(ti)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/50 transition-all">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColors[task.status] || 'bg-muted-foreground/30'}`} />
+                    <span className="text-[13px] text-foreground flex-1 truncate">{task.title}</span>
+                    <span className={`text-[11px] px-2 py-1 rounded-md font-semibold ${daysLeft <= 1 ? 'bg-destructive/8 text-destructive' : daysLeft <= 3 ? 'bg-warning/8 text-warning' : 'bg-secondary text-muted-foreground'}`}>
                       {daysLeft <= 0 ? 'Today' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft}d`}
                     </span>
                   </motion.div>
                 );
               })}
-              {upcomingDeadlines.length === 0 && <div className="text-center py-10 text-muted-foreground/60 text-sm font-medium">No upcoming deadlines 🌟</div>}
+              {upcomingDeadlines.length === 0 && <div className="text-center py-10 text-muted-foreground/50 text-sm">No upcoming deadlines 🌟</div>}
             </div>
           </div>
         );
 
       case 'finance':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={DollarSign} iconBg="bg-emerald-500/10" iconColor="text-emerald-500" title="Finance" actionLabel="Details" actionSection="payments" />
-            <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={DollarSign} title="Finance Overview" actionLabel="Details" actionSection="payments" />
+            <div className="grid grid-cols-3 gap-2 mb-4">
               {[
-                { label: 'Income', value: totalIncome, icon: ArrowUpRight, color: 'text-emerald-500', bg: 'bg-emerald-500/5', border: 'border-emerald-500/10' },
-                { label: 'Expenses', value: totalExpenses, icon: ArrowDownRight, color: 'text-rose-500', bg: 'bg-rose-500/5', border: 'border-rose-500/10' },
-                { label: 'Pending', value: pendingAmount, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/5', border: 'border-amber-500/10' },
+                { label: 'Income', value: totalIncome, icon: ArrowUpRight, color: 'text-success', bg: 'bg-success/6', border: 'border-success/10' },
+                { label: 'Expenses', value: totalExpenses, icon: ArrowDownRight, color: 'text-destructive', bg: 'bg-destructive/6', border: 'border-destructive/10' },
+                { label: 'Pending', value: pendingAmount, icon: Clock, color: 'text-warning', bg: 'bg-warning/6', border: 'border-warning/10' },
               ].map(d => (
-                <div key={d.label} className={`text-center p-3.5 rounded-2xl ${d.bg} border ${d.border} flex flex-col items-center justify-center`}>
-                  <d.icon size={16} className={`${d.color} mb-1`} />
-                  <div className={`text-lg font-extrabold ${d.color} tabular-nums`}>{fmt(d.value)}</div>
-                  <div className="text-[10px] text-muted-foreground/70 font-semibold mt-0.5">{d.label}</div>
+                <div key={d.label} className={`text-center p-3 rounded-xl ${d.bg} border ${d.border}`}>
+                  <d.icon size={14} className={`${d.color} mx-auto mb-1.5`} />
+                  <div className={`text-base font-bold ${d.color} tabular-nums`}>{fmt(d.value)}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 font-medium">{d.label}</div>
                 </div>
               ))}
             </div>
-            <div className="mt-auto p-4 rounded-2xl bg-gradient-to-r from-primary/[0.04] to-accent/[0.03] text-center border border-border/20">
-              <div className={`text-2xl font-extrabold tabular-nums ${totalIncome - totalExpenses >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{fmt(totalIncome - totalExpenses)}</div>
-              <div className="text-[10px] text-muted-foreground/60 font-semibold">Net Profit</div>
+            <div className="mt-auto p-4 rounded-xl bg-secondary/30 text-center border border-border/30">
+              <div className="text-[10px] text-muted-foreground font-medium mb-1">Net Profit</div>
+              <div className={`text-xl font-bold tabular-nums ${totalIncome - totalExpenses >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(totalIncome - totalExpenses)}</div>
             </div>
           </div>
         );
 
       case 'activity':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={Activity} iconBg="bg-violet-500/10" iconColor="text-violet-500" title="Activity" />
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={Activity} title="Recent Activity" />
             <div className="flex-1 overflow-auto space-y-0.5">
               {[
                 { text: 'Deployed SaaS Landing Page', time: '2h ago', emoji: '🚀' },
@@ -240,10 +238,10 @@ export default function DashboardHome() {
                 { text: 'WooCommerce v9.2 update', time: '1d ago', emoji: '🔌' },
                 { text: 'Fixed responsive layout', time: '2d ago', emoji: '🔧' },
               ].map((a, ai) => (
-                <motion.div key={ai} {...fadeUp(ai)} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-secondary/30 transition-all">
-                  <span className="text-base flex-shrink-0">{a.emoji}</span>
-                  <span className="text-[13px] text-card-foreground flex-1 truncate">{a.text}</span>
-                  <span className="text-[11px] text-muted-foreground/50 flex-shrink-0 tabular-nums font-medium">{a.time}</span>
+                <motion.div key={ai} {...fadeUp(ai)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/40 transition-all">
+                  <span className="text-sm flex-shrink-0">{a.emoji}</span>
+                  <span className="text-[13px] text-foreground flex-1 truncate">{a.text}</span>
+                  <span className="text-[11px] text-muted-foreground/50 flex-shrink-0 tabular-nums">{a.time}</span>
                 </motion.div>
               ))}
             </div>
@@ -252,17 +250,17 @@ export default function DashboardHome() {
 
       case 'quick-links':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={ExternalLink} iconBg="bg-primary/10" iconColor="text-primary" title="Quick Access" actionLabel="All Links" actionSection="links" />
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={ExternalLink} title="Quick Access" actionLabel="All Links" actionSection="links" />
             <div className="grid grid-cols-2 gap-2 flex-1 content-start">
               {quickLinks.map((link, li) => (
                 <motion.a key={link.id} {...fadeUp(li)} href={link.url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-secondary/20 hover:bg-secondary/50 transition-all group border border-transparent hover:border-primary/10 hover:scale-[1.01]">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-[13px] font-bold flex-shrink-0 group-hover:bg-primary group-hover:text-white transition-all">
+                  className="flex items-center gap-2.5 p-3 rounded-xl bg-secondary/30 hover:bg-secondary/60 transition-all group border border-transparent hover:border-border/50">
+                  <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                     {link.title.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <span className="text-xs font-semibold text-card-foreground truncate block">{link.title}</span>
+                    <span className="text-xs font-semibold text-foreground truncate block">{link.title}</span>
                     <span className="text-[10px] text-muted-foreground/50 truncate block">{link.category}</span>
                   </div>
                 </motion.a>
@@ -278,8 +276,8 @@ export default function DashboardHome() {
 
       case 'platforms':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={BarChart3} iconBg="bg-sky-500/10" iconColor="text-sky-500" title="Platforms" />
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={BarChart3} title="Platforms" />
             <div className="grid grid-cols-2 gap-2 flex-1 content-start">
               {[
                 { name: 'Cloudflare', section: 'cloudflare', ok: true, emoji: '☁️' },
@@ -288,12 +286,12 @@ export default function DashboardHome() {
                 { name: 'OpenClaw', section: 'openclaw', ok: true, emoji: '🐙' },
               ].map(p => (
                 <button key={p.name} onClick={() => setActiveSection(p.section)}
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-secondary/20 hover:bg-secondary/50 transition-all hover:scale-[1.01] border border-transparent hover:border-primary/10">
-                  <span className="text-xl">{p.emoji}</span>
+                  className="flex items-center gap-2.5 p-3 rounded-xl bg-secondary/30 hover:bg-secondary/60 transition-all border border-transparent hover:border-border/50">
+                  <span className="text-lg">{p.emoji}</span>
                   <div className="text-left min-w-0">
-                    <div className="text-xs font-semibold text-card-foreground">{p.name}</div>
-                    <div className={`text-[10px] font-semibold flex items-center gap-1 ${p.ok ? 'text-emerald-500' : 'text-amber-500'}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${p.ok ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    <div className="text-xs font-semibold text-foreground">{p.name}</div>
+                    <div className={`text-[10px] font-medium flex items-center gap-1 ${p.ok ? 'text-success' : 'text-warning'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${p.ok ? 'bg-success' : 'bg-warning'}`} />
                       {p.ok ? 'Operational' : 'Warning'}
                     </div>
                   </div>
@@ -305,14 +303,14 @@ export default function DashboardHome() {
 
       case 'ideas':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={Lightbulb} iconBg="bg-amber-500/10" iconColor="text-amber-500" title="Top Ideas" actionSection="ideas" />
-            <div className="flex-1 overflow-auto space-y-1.5">
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={Lightbulb} title="Top Ideas" actionSection="ideas" />
+            <div className="flex-1 overflow-auto space-y-1">
               {topIdeas.map((idea, ii) => (
-                <motion.div key={idea.id} {...fadeUp(ii)} className="flex items-center gap-2.5 p-3 rounded-xl hover:bg-secondary/40 transition-all">
-                  <span className="text-xs font-extrabold text-primary bg-primary/10 px-2 py-1 rounded-lg tabular-nums">{idea.votes}↑</span>
-                  <span className="text-[13px] text-card-foreground flex-1 truncate font-medium">{idea.title}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-lg bg-secondary text-muted-foreground font-semibold">{idea.status}</span>
+                <motion.div key={idea.id} {...fadeUp(ii)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-secondary/40 transition-all">
+                  <span className="text-xs font-bold text-primary bg-primary/8 px-2 py-1 rounded-md tabular-nums">{idea.votes}↑</span>
+                  <span className="text-[13px] text-foreground flex-1 truncate">{idea.title}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium">{idea.status}</span>
                 </motion.div>
               ))}
               {topIdeas.length === 0 && <div className="text-center py-8 text-muted-foreground/50 text-sm">No active ideas</div>}
@@ -322,14 +320,14 @@ export default function DashboardHome() {
 
       case 'notes-preview':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={Pin} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="Pinned Notes" actionLabel="Notes" actionSection="notes" />
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={Pin} title="Pinned Notes" actionLabel="Notes" actionSection="notes" />
             <div className="flex-1 overflow-auto space-y-2">
               {pinnedNotes.map((note, ni) => (
                 <motion.button key={note.id} {...fadeUp(ni)} onClick={() => setActiveSection('notes')}
-                  className="w-full text-left p-3.5 rounded-xl hover:bg-secondary/40 transition-all border border-border/15 hover:border-primary/10">
-                  <div className="text-[13px] font-semibold text-card-foreground truncate">{note.title}</div>
-                  <div className="text-[11px] text-muted-foreground/60 truncate mt-1 leading-relaxed">{note.content.slice(0, 80)}...</div>
+                  className="w-full text-left p-3 rounded-xl hover:bg-secondary/40 transition-all border border-border/30 hover:border-border/60">
+                  <div className="text-[13px] font-semibold text-foreground truncate">{note.title}</div>
+                  <div className="text-[11px] text-muted-foreground/50 truncate mt-1">{note.content.slice(0, 80)}...</div>
                 </motion.button>
               ))}
               {pinnedNotes.length === 0 && <div className="text-center py-8 text-muted-foreground/50 text-sm">No pinned notes</div>}
@@ -339,23 +337,23 @@ export default function DashboardHome() {
 
       case 'quote':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-6 flex flex-col justify-center bg-gradient-to-br from-primary/[0.04] via-transparent to-accent/[0.03]`}>
-            <Sparkles size={18} className="text-primary/30 mb-3" />
-            <div className="text-[15px] font-semibold text-card-foreground/90 italic leading-relaxed">"{quote.text}"</div>
-            <div className="text-[12px] text-muted-foreground/50 mt-3 font-semibold">— {quote.author}</div>
+          <div className={`${widgetBase} p-6 flex flex-col justify-center`}>
+            <Sparkles size={16} className="text-primary/40 mb-3" />
+            <div className="text-sm font-medium text-foreground/80 italic leading-relaxed">"{quote.text}"</div>
+            <div className="text-[11px] text-muted-foreground/40 mt-3 font-medium">— {quote.author}</div>
           </div>
         );
 
       case 'habits':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={Flame} iconBg="bg-orange-500/10" iconColor="text-orange-500" title="Habits" actionSection="habits" />
-            <div className="flex-1 overflow-auto space-y-1.5">
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={Flame} title="Habits" actionSection="habits" />
+            <div className="flex-1 overflow-auto space-y-1">
               {habits.length > 0 ? habits.slice(0, 5).map((h, hi) => (
-                <motion.div key={h.id} {...fadeUp(hi)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/40 transition-all">
-                  <span className="text-lg">{h.icon}</span>
-                  <span className="text-[13px] text-card-foreground flex-1 truncate font-medium">{h.name}</span>
-                  <div className="flex items-center gap-1 text-xs font-bold text-orange-500">
+                <motion.div key={h.id} {...fadeUp(hi)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/40 transition-all">
+                  <span className="text-base">{h.icon}</span>
+                  <span className="text-[13px] text-foreground flex-1 truncate">{h.name}</span>
+                  <div className="flex items-center gap-1 text-xs font-semibold text-warning">
                     <Flame size={12} /> {h.streak}
                   </div>
                 </motion.div>
@@ -371,14 +369,14 @@ export default function DashboardHome() {
 
       case 'websites-summary':
         return (
-          <div className={`${widgetClass} ${widgetBg} p-5 flex flex-col`}>
-            <WidgetHeader icon={Globe} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="My Websites" actionLabel="Manage" actionSection="websites" />
-            <div className="flex-1 overflow-auto space-y-1">
+          <div className={`${widgetBase} p-5 flex flex-col`}>
+            <WidgetHeader icon={Globe} title="My Websites" actionLabel="Manage" actionSection="websites" />
+            <div className="flex-1 overflow-auto space-y-0.5">
               {websites.slice(0, 5).map((w, wi) => (
-                <motion.div key={w.id} {...fadeUp(wi)} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-secondary/40 transition-all group">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${w.status === 'active' ? 'bg-emerald-500' : w.status === 'maintenance' ? 'bg-amber-500' : 'bg-rose-500'}`} />
-                  <span className="text-[13px] text-card-foreground flex-1 truncate font-medium">{w.name}</span>
-                  <span className="text-[10px] text-muted-foreground/50 truncate max-w-[100px] font-medium">{w.category}</span>
+                <motion.div key={w.id} {...fadeUp(wi)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/40 transition-all group">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${w.status === 'active' ? 'bg-success' : w.status === 'maintenance' ? 'bg-warning' : 'bg-destructive'}`} />
+                  <span className="text-[13px] text-foreground flex-1 truncate">{w.name}</span>
+                  <span className="text-[10px] text-muted-foreground/50 truncate max-w-[100px]">{w.category}</span>
                   <a href={w.url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                     <ExternalLink size={13} className="text-primary" />
                   </a>
@@ -389,41 +387,41 @@ export default function DashboardHome() {
         );
 
       default:
-        return <div className={`${widgetClass} ${widgetBg} p-5 flex items-center justify-center text-muted-foreground/40 text-sm`}>Widget: {widgetId}</div>;
+        return <div className={`${widgetBase} p-5 flex items-center justify-center text-muted-foreground/40 text-sm`}>Widget: {widgetId}</div>;
     }
   };
 
   const visibleWidgets = widgetDefinitions.filter(w => visibility[w.id] !== false);
 
   return (
-    <div className="space-y-5">
-      {/* Welcome + Controls */}
-      <motion.div {...fadeUp(0)} className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/8 border border-emerald-500/10 text-emerald-500 text-xs font-bold tracking-tight">
-            <Target size={13} /> {completedToday} done today
-          </div>
+    <div className="space-y-4">
+      {/* Page Header */}
+      <motion.div {...fadeUp(0)} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Dashboard</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Welcome back, {userName}. Here's your overview.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Status chips */}
+          {completedToday > 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-success/6 border border-success/10 text-success text-[11px] font-semibold">
+              <Target size={11} /> {completedToday} done today
+            </div>
+          )}
           {overdueTasks > 0 && (
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-500/8 border border-rose-500/10 text-rose-500 text-xs font-bold animate-pulse tracking-tight">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-destructive/6 border border-destructive/10 text-destructive text-[11px] font-semibold">
               ⚠️ {overdueTasks} overdue
             </div>
           )}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-500/8 border border-blue-500/10 text-blue-500 text-xs font-bold tracking-tight">
-            <FileText size={13} /> {notes.length} notes
-          </div>
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-violet-500/8 border border-violet-500/10 text-violet-500 text-xs font-bold tracking-tight">
-            <Sparkles size={13} /> {links.length} links
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+          {/* Controls */}
           <button onClick={() => setIsLocked(!isLocked)}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all ${isLocked ? 'text-muted-foreground/50 hover:text-foreground hover:bg-secondary' : 'text-primary bg-primary/10 ring-1 ring-primary/15'}`}>
-            {isLocked ? <Lock size={13} /> : <Unlock size={13} />}
+            className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-all border ${isLocked ? 'text-muted-foreground border-border/50 hover:bg-secondary' : 'text-primary bg-primary/6 border-primary/15'}`}>
+            {isLocked ? <Lock size={11} /> : <Unlock size={11} />}
             {isLocked ? 'Locked' : 'Editing'}
           </button>
           <button onClick={() => setConfigOpen(!configOpen)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-foreground transition-colors px-3.5 py-2 rounded-xl hover:bg-secondary font-semibold">
-            <Settings2 size={14} /> Widgets
+            className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg hover:bg-secondary border border-border/50 font-medium">
+            <Settings2 size={12} /> Widgets
           </button>
         </div>
       </motion.div>
@@ -432,20 +430,20 @@ export default function DashboardHome() {
       <AnimatePresence>
         {configOpen && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className={`${widgetBg} rounded-[20px] border border-border/30 p-5 shadow-xl space-y-4`}>
+            <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-card-foreground">Customize Dashboard</h3>
-                <span className="text-[10px] text-muted-foreground/50 font-semibold">{visibleWidgets.length}/{widgetDefinitions.length} visible</span>
+                <h3 className="text-sm font-semibold text-foreground">Customize Dashboard</h3>
+                <span className="text-[10px] text-muted-foreground font-medium">{visibleWidgets.length}/{widgetDefinitions.length} visible</span>
               </div>
               {['overview', 'productivity', 'business', 'platforms'].map(cat => (
                 <div key={cat}>
-                  <div className="text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[2px] mb-2">{cat}</div>
+                  <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-2">{cat}</div>
                   <div className="flex flex-wrap gap-2">
                     {widgetDefinitions.filter(w => w.category === cat).map(w => (
                       <button key={w.id} onClick={() => toggleWidgetVisibility(w.id)}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${visibility[w.id] !== false ? 'bg-primary/10 text-primary ring-1 ring-primary/15' : 'bg-secondary/40 text-muted-foreground/50 hover:text-muted-foreground'}`}>
-                        {visibility[w.id] !== false ? <Eye size={12} /> : <EyeOff size={12} />}
-                        <span>{w.icon}</span> {w.title}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all border ${visibility[w.id] !== false ? 'bg-primary/6 text-primary border-primary/15' : 'bg-secondary/40 text-muted-foreground/50 border-border/30 hover:text-muted-foreground'}`}>
+                        {visibility[w.id] !== false ? <Eye size={11} /> : <EyeOff size={11} />}
+                        {w.icon} {w.title}
                       </button>
                     ))}
                   </div>
@@ -467,15 +465,15 @@ export default function DashboardHome() {
         isResizable={!isLocked}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".drag-handle"
-        margin={[14, 14]}
+        margin={[12, 12]}
         containerPadding={[0, 0]}
         useCSSTransforms
       >
         {visibleWidgets.map((widget, i) => (
           <div key={widget.id} className="relative group">
             {!isLocked && (
-              <div className="drag-handle absolute top-2.5 left-2.5 z-10 cursor-grab active:cursor-grabbing p-1.5 rounded-xl bg-card/90 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border border-border/20">
-                <GripVertical size={13} className="text-muted-foreground/60" />
+              <div className="drag-handle absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-card/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity border border-border/30">
+                <GripVertical size={12} className="text-muted-foreground/50" />
               </div>
             )}
             {renderWidget(widget.id, i)}
