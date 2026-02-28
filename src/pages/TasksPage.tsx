@@ -96,12 +96,12 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-start justify-center p-4 pt-16" onClick={onClose}>
+          className="fixed inset-0 z-[200] flex items-end sm:items-start justify-center sm:p-4 sm:pt-16" onClick={onClose}>
           <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" />
           <motion.div
-            initial={{ scale: 0.96, opacity: 0, y: -12 }} animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0, y: -12 }} transition={{ duration: 0.18 }}
-            className="relative w-full max-w-2xl bg-card rounded-2xl shadow-2xl border border-border/50 overflow-hidden"
+            initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }} transition={{ duration: 0.18 }}
+            className="relative w-full sm:max-w-2xl bg-card rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border/50 overflow-hidden max-h-[95vh] sm:max-h-none flex flex-col"
             onClick={e => e.stopPropagation()}>
 
             {/* Priority color strip */}
@@ -127,7 +127,7 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
             </div>
 
             {/* Body */}
-            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto">
               {/* Title */}
               <textarea
                 autoFocus rows={2}
@@ -226,12 +226,12 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border/40">
-              <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+            <div className="flex items-center justify-end gap-2 px-4 sm:px-6 py-4 border-t border-border/40 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
+              <button onClick={onClose} className="px-4 py-2.5 sm:py-2 rounded-xl text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors touch-manipulation">
                 Cancel
               </button>
               <button onClick={save}
-                className="px-5 py-2 rounded-xl text-sm font-bold text-white shadow-lg transition-opacity hover:opacity-90"
+                className="px-5 py-2.5 sm:py-2 rounded-xl text-sm font-bold text-white shadow-lg transition-opacity hover:opacity-90 touch-manipulation"
                 style={{ background: `linear-gradient(135deg, ${pr.color}, ${pr.color}cc)`, boxShadow: `0 4px 15px ${pr.color}40` }}>
                 {task ? "Save Changes" : "Create Task"}
               </button>
