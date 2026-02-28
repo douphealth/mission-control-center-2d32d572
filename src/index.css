@@ -477,6 +477,11 @@
     touch-action: pan-y;
   }
 
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   @media (max-width: 768px) {
     .mobile-card {
       @apply rounded-xl;
@@ -485,6 +490,54 @@
     .card-elevated {
       @apply rounded-xl;
     }
+
+    /* Larger tap targets on mobile */
+    button, a, [role="button"] {
+      min-height: 36px;
+      min-width: 36px;
+    }
+
+    /* Prevent text selection on interactive elements */
+    nav, button, [role="button"] {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Smoother momentum scrolling */
+    .overflow-y-auto, .overflow-auto {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+
+    /* Compact stat cards */
+    .stat-card {
+      @apply p-3;
+    }
+
+    /* Full-width modals on mobile */
+    [role="dialog"] > div {
+      max-width: 100% !important;
+      margin: 0 8px;
+    }
+
+    /* Tighter widget spacing */
+    .widget-card {
+      @apply rounded-xl;
+    }
+
+    /* Section headers */
+    .section-header {
+      @apply mb-3 gap-2;
+    }
+  }
+
+  /* Safe area padding for notched devices */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
   }
 }
 

@@ -83,20 +83,20 @@ export default function MobileBottomNav() {
               </div>
 
               {/* Grid of items */}
-              <div className="px-4 pb-4">
-                <div className="grid grid-cols-4 gap-1.5">
+              <div className="px-3 pb-4">
+                <div className="grid grid-cols-4 gap-1">
                   {moreItems.map(item => (
                     <motion.button
                       key={item.id}
                       onClick={() => handleTab(item.id)}
-                      whileTap={{ scale: 0.92 }}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all
+                      whileTap={{ scale: 0.88 }}
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all touch-manipulation
                         ${activeSection === item.id
                           ? 'bg-primary/8 text-primary shadow-sm'
-                          : 'text-muted-foreground hover:bg-secondary active:bg-secondary'}`}
+                          : 'text-muted-foreground active:bg-secondary/80'}`}
                     >
-                      <span className="text-xl">{item.emoji}</span>
-                      <span className="text-[10px] font-semibold">{item.label}</span>
+                      <span className="text-2xl">{item.emoji}</span>
+                      <span className="text-[10px] font-semibold leading-tight">{item.label}</span>
                     </motion.button>
                   ))}
                 </div>
@@ -108,8 +108,8 @@ export default function MobileBottomNav() {
 
       {/* Bottom tab bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden">
-        <div className="bg-card/90 backdrop-blur-2xl border-t border-border/40 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
-          <div className="flex items-center justify-around h-16">
+        <div className="bg-card/95 backdrop-blur-2xl border-t border-border/40 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.12)]">
+          <div className="flex items-center justify-around h-14">
             {primaryTabs.map(tab => {
               const isActive = tab.id === 'more' ? moreOpen : activeSection === tab.id;
               const Icon = tab.icon;
@@ -117,19 +117,19 @@ export default function MobileBottomNav() {
                 <motion.button
                   key={tab.id}
                   onClick={() => handleTab(tab.id)}
-                  whileTap={{ scale: 0.9 }}
-                  className={`relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors
+                  whileTap={{ scale: 0.85 }}
+                  className={`relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors touch-manipulation
                     ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
                 >
                   <div className="relative">
-                    <Icon size={22} strokeWidth={isActive ? 2.2 : 1.6} />
+                    <Icon size={20} strokeWidth={isActive ? 2.2 : 1.6} />
                     {tab.id === 'tasks' && openTasks > 0 && (
-                      <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                      <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
                         {openTasks > 9 ? '9+' : openTasks}
                       </span>
                     )}
                   </div>
-                  <span className={`text-[10px] font-semibold ${isActive ? 'text-primary' : ''}`}>{tab.label}</span>
+                  <span className={`text-[10px] font-semibold leading-tight ${isActive ? 'text-primary' : ''}`}>{tab.label}</span>
                   {isActive && tab.id !== 'more' && (
                     <motion.div
                       layoutId="bottomTabIndicator"
