@@ -107,8 +107,8 @@ export default function DashboardLayout() {
       </div>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-          <div className="max-w-[1600px] mx-auto p-3 sm:p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0 overscroll-contain">
+          <div className="max-w-[1600px] mx-auto p-2 sm:p-4 lg:p-6">
             <Suspense fallback={<LoadingSkeleton />}>
               <AnimatePresence mode="wait">
                 <motion.div
