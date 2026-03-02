@@ -1,6 +1,3 @@
-// SOTA Widget Registry — config-driven, extensible, dynamic widget system
-// Each widget is a self-contained, draggable, resizable unit
-
 export interface WidgetDefinition {
   id: string;
   type: string;
@@ -13,86 +10,72 @@ export interface WidgetDefinition {
 
 export const widgetDefinitions: WidgetDefinition[] = [
   // Overview
-  { id: 'stats', type: 'stats', title: 'Overview Stats', icon: '📊', category: 'overview', defaultLayout: { w: 12, h: 3, minW: 6, minH: 2 }, description: 'Key metrics at a glance' },
-  { id: 'activity', type: 'activity', title: 'Recent Activity', icon: '🕐', category: 'overview', defaultLayout: { w: 6, h: 5, minW: 4, minH: 3 }, description: 'Latest actions and events' },
-  { id: 'quick-links', type: 'quick-links', title: 'Quick Access', icon: '🔗', category: 'overview', defaultLayout: { w: 6, h: 5, minW: 4, minH: 3 }, description: 'Pinned links for fast access' },
-  { id: 'quote', type: 'quote', title: 'Daily Inspiration', icon: '✨', category: 'overview', defaultLayout: { w: 4, h: 3, minW: 3, minH: 2 }, description: 'Daily motivational quote' },
+  { id: 'stats', type: 'stats', title: 'Overview Stats', icon: '📊', category: 'overview', defaultLayout: { w: 12, h: 4, minW: 8, minH: 3 }, description: 'Key metrics at a glance' },
+  { id: 'activity', type: 'activity', title: 'Project Analytics', icon: '📈', category: 'overview', defaultLayout: { w: 7, h: 6, minW: 4, minH: 4 }, description: 'Weekly activity chart' },
+  { id: 'quote', type: 'quote', title: 'Time Tracker', icon: '⏱️', category: 'overview', defaultLayout: { w: 5, h: 6, minW: 3, minH: 4 }, description: 'Timer & daily inspiration' },
 
   // Productivity
-  { id: 'tasks-focus', type: 'tasks-focus', title: "Today's Focus", icon: '⚡', category: 'productivity', defaultLayout: { w: 6, h: 6, minW: 4, minH: 4 }, description: 'Priority tasks for today' },
-  { id: 'deadlines', type: 'deadlines', title: 'Upcoming Deadlines', icon: '📅', category: 'productivity', defaultLayout: { w: 6, h: 6, minW: 4, minH: 4 }, description: 'Approaching due dates' },
-  { id: 'habits', type: 'habits', title: 'Habit Tracker', icon: '🎯', category: 'productivity', defaultLayout: { w: 6, h: 4, minW: 4, minH: 3 }, description: 'Track daily habits and streaks' },
+  { id: 'tasks-focus', type: 'tasks-focus', title: "Today's Focus", icon: '⚡', category: 'productivity', defaultLayout: { w: 5, h: 7, minW: 4, minH: 5 }, description: 'Priority tasks for today' },
+  { id: 'deadlines', type: 'deadlines', title: 'Reminders', icon: '📅', category: 'productivity', defaultLayout: { w: 4, h: 7, minW: 3, minH: 5 }, description: 'Approaching due dates' },
+  { id: 'habits', type: 'habits', title: 'Habit Tracker', icon: '🔥', category: 'productivity', defaultLayout: { w: 3, h: 7, minW: 3, minH: 5 }, description: 'Daily habits & streaks' },
+  { id: 'calendar-mini', type: 'calendar-mini', title: 'Calendar', icon: '📆', category: 'productivity', defaultLayout: { w: 4, h: 5, minW: 3, minH: 4 }, description: 'Mini calendar view' },
 
   // Business
-  { id: 'finance', type: 'finance', title: 'Finance Summary', icon: '💰', category: 'business', defaultLayout: { w: 6, h: 5, minW: 4, minH: 4 }, description: 'Income, expenses, and profit' },
-  { id: 'ideas', type: 'ideas', title: 'Top Ideas', icon: '💡', category: 'business', defaultLayout: { w: 6, h: 5, minW: 4, minH: 3 }, description: 'Most voted ideas' },
-  { id: 'notes-preview', type: 'notes-preview', title: 'Pinned Notes', icon: '📝', category: 'business', defaultLayout: { w: 4, h: 4, minW: 3, minH: 3 }, description: 'Quick note access' },
+  { id: 'finance', type: 'finance', title: 'Finance Overview', icon: '💰', category: 'business', defaultLayout: { w: 5, h: 6, minW: 4, minH: 5 }, description: 'Income, expenses & profit' },
+  { id: 'ideas', type: 'ideas', title: 'Project Progress', icon: '🎯', category: 'business', defaultLayout: { w: 4, h: 6, minW: 3, minH: 5 }, description: 'Progress ring & top ideas' },
+  { id: 'notes-preview', type: 'notes-preview', title: 'Pinned Notes', icon: '📝', category: 'business', defaultLayout: { w: 3, h: 6, minW: 3, minH: 4 }, description: 'Quick note access' },
 
   // Platforms
-  { id: 'platforms', type: 'platforms', title: 'Platform Status', icon: '🖥️', category: 'platforms', defaultLayout: { w: 4, h: 4, minW: 3, minH: 3 }, description: 'Service status overview' },
-  { id: 'websites-summary', type: 'websites-summary', title: 'Websites Overview', icon: '🌐', category: 'platforms', defaultLayout: { w: 8, h: 4, minW: 6, minH: 3 }, description: 'Website status and quick access' },
+  { id: 'platforms', type: 'platforms', title: 'Team & Collaboration', icon: '👥', category: 'platforms', defaultLayout: { w: 5, h: 5, minW: 4, minH: 4 }, description: 'Team activity & status' },
+  { id: 'quick-links', type: 'quick-links', title: 'Projects', icon: '🚀', category: 'platforms', defaultLayout: { w: 4, h: 5, minW: 3, minH: 4 }, description: 'Build projects overview' },
+  { id: 'websites-summary', type: 'websites-summary', title: 'Websites', icon: '🌐', category: 'platforms', defaultLayout: { w: 3, h: 5, minW: 3, minH: 4 }, description: 'Website status tracker' },
 ];
 
 export function getDefaultLayouts(cols: number = 12): Array<{ i: string; x: number; y: number; w: number; h: number; minW?: number; minH?: number }> {
-  const layouts: Array<{ i: string; x: number; y: number; w: number; h: number; minW?: number; minH?: number }> = [];
-  let x = 0;
-  let y = 0;
+  // Hand-crafted optimal layout for beautiful tiling
+  const hand: Record<string, { x: number; y: number; w: number; h: number }> = {
+    'stats': { x: 0, y: 0, w: 12, h: 4 },
+    'activity': { x: 0, y: 4, w: 7, h: 6 },
+    'quote': { x: 7, y: 4, w: 5, h: 6 },
+    'tasks-focus': { x: 0, y: 10, w: 5, h: 7 },
+    'deadlines': { x: 5, y: 10, w: 4, h: 7 },
+    'habits': { x: 9, y: 10, w: 3, h: 7 },
+    'finance': { x: 0, y: 17, w: 5, h: 6 },
+    'ideas': { x: 5, y: 17, w: 4, h: 6 },
+    'notes-preview': { x: 9, y: 17, w: 3, h: 6 },
+    'platforms': { x: 0, y: 23, w: 5, h: 5 },
+    'quick-links': { x: 5, y: 23, w: 4, h: 5 },
+    'websites-summary': { x: 9, y: 23, w: 3, h: 5 },
+    'calendar-mini': { x: 8, y: 4, w: 4, h: 5 },
+  };
 
-  for (const def of widgetDefinitions) {
-    const w = Math.min(def.defaultLayout.w, cols);
-    if (x + w > cols) {
-      x = 0;
-      y += 1;
+  return widgetDefinitions.map(def => {
+    const h = hand[def.id];
+    if (h) {
+      const w = Math.min(h.w, cols);
+      const x = Math.min(h.x, cols - w);
+      return { i: def.id, x, y: h.y, w, h: h.h, minW: def.defaultLayout.minW, minH: def.defaultLayout.minH };
     }
-    layouts.push({
-      i: def.id,
-      x,
-      y,
-      w,
-      h: def.defaultLayout.h,
-      minW: def.defaultLayout.minW,
-      minH: def.defaultLayout.minH,
-    });
-    x += w;
-    if (x >= cols) {
-      x = 0;
-      y += 1;
-    }
-  }
-
-  return layouts;
+    return { i: def.id, x: 0, y: 999, w: Math.min(def.defaultLayout.w, cols), h: def.defaultLayout.h, minW: def.defaultLayout.minW, minH: def.defaultLayout.minH };
+  });
 }
 
-const LAYOUT_KEY = 'mc-grid-layout-v7';
-const VISIBILITY_KEY = 'mc-widget-visibility-v7';
+const LAYOUT_KEY = 'mc-grid-layout-v9';
+const VISIBILITY_KEY = 'mc-widget-visibility-v9';
 
 export function loadSavedLayout() {
-  try {
-    const raw = localStorage.getItem(LAYOUT_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { }
+  try { const raw = localStorage.getItem(LAYOUT_KEY); if (raw) return JSON.parse(raw); } catch { }
   return null;
 }
-
 export function saveLayout(layouts: any) {
-  try {
-    localStorage.setItem(LAYOUT_KEY, JSON.stringify(layouts));
-  } catch { }
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layouts)); } catch { }
 }
-
 export function loadWidgetVisibility(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(VISIBILITY_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { }
-  // All visible by default
+  try { const raw = localStorage.getItem(VISIBILITY_KEY); if (raw) return JSON.parse(raw); } catch { }
   const defaults: Record<string, boolean> = {};
   widgetDefinitions.forEach(w => { defaults[w.id] = true; });
   return defaults;
 }
-
 export function saveWidgetVisibility(visibility: Record<string, boolean>) {
-  try {
-    localStorage.setItem(VISIBILITY_KEY, JSON.stringify(visibility));
-  } catch { }
+  try { localStorage.setItem(VISIBILITY_KEY, JSON.stringify(visibility)); } catch { }
 }
