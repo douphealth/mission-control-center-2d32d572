@@ -79,6 +79,28 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // ─── Design tokens ───────────────────────────────────────
+        card: "16px",
+        button: "12px",
+        input: "12px",
+        modal: "24px",
+        chip: "9999px",
+      },
+      spacing: {
+        // ─── Design tokens ───────────────────────────────────────
+        'card-padding': '24px',
+        'card-padding-sm': '16px',
+        'section-gap': '20px',
+        'section-gap-lg': '32px',
+        'page-x': '24px',
+        'page-y': '24px',
+      },
+      boxShadow: {
+        // ─── Elevation tokens ────────────────────────────────────
+        card: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        elevated: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        modal: '0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        glow: '0 0 20px -5px hsl(var(--primary) / 0.3)',
       },
       keyframes: {
         "accordion-down": {

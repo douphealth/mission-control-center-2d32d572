@@ -34,18 +34,18 @@ const categoryColors: Record<string, string> = {
   Other: "text-zinc-500 bg-zinc-500/10",
 };
 
-function MaskedField({ value, label, isVisible, onReveal, onCopy, isMasterLocked }: {
+function MaskedField({ value, label, isVisible, onReveal, onCopy, isMasterLocked, decryptedValue }: {
   value: string; label: string; isVisible: boolean;
   onReveal: () => void; onCopy: () => void; isMasterLocked: boolean;
+  decryptedValue?: string;
 }) {
   if (!value) return null;
-  const decryptedValue = isVisible ? (decrypt(value) || value) : "";
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-muted-foreground text-[11px] shrink-0 w-16">{label}:</span>
       <div className="flex items-center gap-1 flex-1 min-w-0">
         <span className="font-mono text-[11px] text-foreground truncate flex-1">
-          {isVisible && !isMasterLocked ? decryptedValue : "••••••••"}
+          {isVisible && !isMasterLocked ? (decryptedValue || value) : "••••••••"}
         </span>
         <button onClick={onReveal} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0">
           {isVisible && !isMasterLocked ? <EyeOff size={10} /> : <Eye size={10} />}
@@ -67,6 +67,7 @@ export default function CredentialsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<CredentialVault, "id">>(emptyForm);
   const [masterLocked, setMasterLocked] = useState(true);
+  const [decryptedCache, setDecryptedCache] = useState<Record<string, { password?: string; apiKey?: string }>>({});
   const bulk = useBulkActions<CredentialVault>();
 
   const categories = ["all", ...Array.from(new Set(credentials.map(c => c.category))).sort()];
@@ -90,24 +91,28 @@ export default function CredentialsPage() {
     });
   };
 
-  const copySecret = (rawValue: string, label: string) => {
+  const copySecret = async (rawValue: string, label: string) => {
     if (masterLocked) { toast.error("Unlock the vault first"); return; }
-    const decrypted = decrypt(rawValue) || rawValue;
+    const decrypted = await decrypt(rawValue) || rawValue;
     navigator.clipboard.writeText(decrypted);
     toast.success(`${label} copied to clipboard`);
   };
 
   const openAdd = () => { setEditId(null); setForm({ ...emptyForm, createdAt: new Date().toISOString().split("T")[0] }); setModalOpen(true); };
-  const openEdit = (c: CredentialVault) => {
+  const openEdit = async (c: CredentialVault) => {
     setEditId(c.id);
     const { id, ...rest } = c;
-    setForm({ ...rest, password: rest.password ? (decrypt(rest.password) || rest.password) : "", apiKey: rest.apiKey ? (decrypt(rest.apiKey) || rest.apiKey) : "" });
+    const decPassword = rest.password ? (await decrypt(rest.password) || rest.password) : "";
+    const decApiKey = rest.apiKey ? (await decrypt(rest.apiKey) || rest.apiKey) : "";
+    setForm({ ...rest, password: decPassword, apiKey: decApiKey });
     setModalOpen(true);
   };
 
   const saveForm = async () => {
     if (!form.label.trim()) { toast.error("Label is required"); return; }
-    const encrypted = { ...form, password: form.password ? encrypt(form.password) : "", apiKey: form.apiKey ? encrypt(form.apiKey) : "" };
+    const encPassword = form.password ? await encrypt(form.password) : "";
+    const encApiKey = form.apiKey ? await encrypt(form.apiKey) : "";
+    const encrypted = { ...form, password: encPassword, apiKey: encApiKey };
     if (editId) { await updateItem<CredentialVault>("credentials", editId, encrypted); toast.success("Credential updated"); }
     else { await addItem<CredentialVault>("credentials", encrypted); toast.success("Credential added"); }
     setModalOpen(false);
@@ -142,7 +147,7 @@ export default function CredentialsPage() {
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <KeyRound size={22} className="text-primary" /> Credential Vault
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{credentials.length} credentials stored · AES-256 encrypted</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{credentials.length} credentials stored · AES-256-GCM encrypted</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setMasterLocked(!masterLocked)}
@@ -279,7 +284,7 @@ export default function CredentialsPage() {
         <FormField label="Notes"><FormTextarea value={form.notes} onChange={v => uf("notes", v)} placeholder="Additional info, 2FA backup codes, etc." rows={2} /></FormField>
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-xl p-3">
           <Shield size={12} className="text-emerald-500 shrink-0" />
-          <span>Passwords & API keys are encrypted with AES-256 before storing</span>
+          <span>Passwords & API keys are encrypted with AES-256-GCM before storing</span>
         </div>
       </FormModal>
     </div>

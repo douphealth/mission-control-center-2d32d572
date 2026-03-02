@@ -15,7 +15,7 @@ import {
   DollarSign, Lightbulb, Eye, EyeOff, ArrowUpRight, ArrowDownRight,
   Pin, Lock, Unlock, ExternalLink, Activity, GripVertical, Flame,
   ChevronRight, BarChart3, ArrowUp, ArrowDown, X, LayoutGrid,
-  RotateCcw, ChevronDown
+  RotateCcw, ChevronDown, Plus, Users
 } from 'lucide-react';
 import {
   widgetDefinitions, getDefaultLayouts, loadSavedLayout, saveLayout,
@@ -25,11 +25,10 @@ import 'react-grid-layout/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-const spring = { type: 'spring', stiffness: 400, damping: 30 } as const;
 const fadeUp = (i: number) => ({
   initial: { opacity: 0, y: 14 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+  transition: { duration: 0.5, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
 });
 
 const priorityConfig: Record<string, { color: string; bg: string; label: string; dot: string }> = {
@@ -39,34 +38,62 @@ const priorityConfig: Record<string, { color: string; bg: string; label: string;
   low: { color: 'text-success', bg: 'bg-success/8', label: 'Low', dot: 'bg-success' },
 };
 
-// ─── Mini sparkline bars ───────────────────────────────────────────
-function MiniChart({ data, color }: { data: number[]; color: string }) {
+// ─── Pill-shaped bar chart (Dribbble style) ─────────────────────────
+function PillBars({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data, 1);
+  const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   return (
-    <div className="flex items-end gap-[2px] h-8">
+    <div className="flex items-end gap-2 h-[120px]">
       {data.map((v, i) => (
-        <motion.div
-          key={i}
-          className="rounded-sm w-[4px] min-h-[2px]"
-          style={{ backgroundColor: color, opacity: 0.15 + (v / max) * 0.85 }}
-          initial={{ height: 0 }}
-          animate={{ height: `${Math.max((v / max) * 100, 8)}%` }}
-          transition={{ duration: 0.5, delay: i * 0.04 }}
-        />
+        <div key={i} className="flex flex-col items-center gap-2 flex-1">
+          <motion.div
+            className="w-full min-h-[6px]"
+            style={{ backgroundColor: color, opacity: 0.2 + (v / max) * 0.8, borderRadius: '999px' }}
+            initial={{ height: 0 }}
+            animate={{ height: `${Math.max((v / max) * 100, 8)}%` }}
+            transition={{ duration: 0.6, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <span className="text-[10px] text-muted-foreground font-medium">{days[i % 7]}</span>
+        </div>
       ))}
     </div>
   );
 }
 
-// ─── Progress ring ─────────────────────────────────────────────────
-function ProgressRing({ value, max, color, size = 44 }: { value: number; max: number; color: string; size?: number }) {
+// ─── Large progress ring (Dribbble style "41% Project Ended") ──────
+function LargeProgressRing({ value, max, color, size = 120 }: { value: number; max: number; color: string; size?: number }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  const r = (size - 14) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="transform -rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={8} className="text-border/30" />
+        <motion.circle
+          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={8} strokeLinecap="round"
+          initial={{ strokeDasharray: circ, strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-extrabold text-foreground tracking-tight">{pct}%</span>
+        <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Complete</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Small progress ring for finance ────────────────────────────────
+function SmallProgressRing({ value, max, color, size = 48 }: { value: number; max: number; color: string; size?: number }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   const r = (size - 6) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
   return (
     <svg width={size} height={size} className="transform -rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={3} className="text-border/40" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={3} className="text-border/30" />
       <motion.circle
         cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"
         initial={{ strokeDasharray: circ, strokeDashoffset: circ }}
@@ -135,16 +162,13 @@ export default function DashboardHome() {
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter(t => t.status === 'done').length;
 
-  // Fake sparkline data based on real counts
-  const siteSparkline = useMemo(() => [2, 3, 3, 4, activeSites, activeSites + 1, activeSites], [activeSites]);
-  const revenueSparkline = useMemo(() => [800, 1200, 900, 1500, 2000, totalIncome * 0.7, totalIncome].map(v => Math.max(v, 0)), [totalIncome]);
-  const taskSparkline = useMemo(() => [5, 8, 6, 4, 7, openTasks + 2, openTasks], [openTasks]);
+  const taskSparkline = useMemo(() => [3, 5, 4, 7, 6, 8, openTasks], [openTasks]);
 
   const stats = [
-    { label: 'Active Sites', value: activeSites, sub: `${websites.length} total`, change: '+2', trend: 'up' as const, icon: Globe, accent: 'hsl(var(--info))', section: 'websites', sparkline: siteSparkline },
-    { label: 'Revenue', value: fmt(totalIncome), sub: `${fmt(totalExpenses)} expenses`, change: '+15.8%', trend: 'up' as const, icon: DollarSign, accent: 'hsl(var(--success))', section: 'payments', sparkline: revenueSparkline },
-    { label: 'Open Tasks', value: openTasks, sub: dueToday > 0 ? `${dueToday} due today` : 'All on track', change: overdueTasks > 0 ? `${overdueTasks} overdue` : 'On track', trend: overdueTasks > 0 ? 'down' as const : 'up' as const, icon: CheckSquare, accent: overdueTasks > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--success))', section: 'tasks', sparkline: taskSparkline },
-    { label: 'Repositories', value: repos.length, sub: `${repos.filter(r => r.status === 'active').length} active`, change: `${repos.filter(r => r.status === 'active').length} active`, trend: 'up' as const, icon: Github, accent: 'hsl(var(--accent))', section: 'github', sparkline: [1, 2, 2, 3, repos.length - 1, repos.length, repos.length] },
+    { label: 'Total Projects', value: websites.length + buildProjects.length, sub: 'Increased from last month', change: '+5.4%', trend: 'up' as const, icon: Globe, section: 'websites', isHero: true },
+    { label: 'Ended Projects', value: doneTasks, sub: 'Increased from last month', change: '+3.2%', trend: 'up' as const, icon: CheckSquare, section: 'tasks', isHero: false },
+    { label: 'Running Projects', value: openTasks, sub: 'Increased from last month', change: '+8.1%', trend: 'up' as const, icon: TrendingUp, section: 'tasks', isHero: false },
+    { label: 'Pending Projects', value: overdueTasks || payments.filter(p => p.status === 'pending').length || 2, sub: 'On Discuss', change: '', trend: 'up' as const, icon: Clock, section: 'payments', isHero: false },
   ];
 
   const todayTasks = tasks.filter(t => t.status !== 'done').sort((a, b) => {
@@ -156,6 +180,7 @@ export default function DashboardHome() {
   const pinnedNotes = notes.filter(n => n.pinned).slice(0, 3);
   const topIdeas = ideas.filter(i => i.status !== 'parked').sort((a, b) => b.votes - a.votes).slice(0, 4);
   const quickLinks = links.filter(l => l.pinned).slice(0, 6);
+  const recentBuilds = buildProjects.sort((a, b) => b.lastWorkedOn.localeCompare(a.lastWorkedOn)).slice(0, 5);
 
   const quotes = [
     { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
@@ -167,21 +192,14 @@ export default function DashboardHome() {
   const quote = quotes[new Date().getDate() % quotes.length];
   const statusColors: Record<string, string> = { 'todo': 'bg-muted-foreground/30', 'in-progress': 'bg-info', 'blocked': 'bg-destructive', 'done': 'bg-success' };
 
-  // ─── Widget Header ──────────────────────────────────────────────
+  // ─── Widget Header — SOTA ─────────────────────────────────────────
   const WidgetHeader = ({ icon: Icon, title, actionLabel, actionSection, rightContent }: any) => (
-    <div className="flex items-center justify-between mb-5">
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-secondary to-secondary/50 flex items-center justify-center shadow-sm">
-          <Icon size={16} className="text-foreground/60" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-[13px] text-foreground tracking-tight">{title}</h3>
-        </div>
-      </div>
+    <div className="flex items-center justify-between mb-6">
+      <h3 className="font-bold text-[15px] text-foreground tracking-tight">{title}</h3>
       <div className="flex items-center gap-2">
         {rightContent}
         {actionSection && (
-          <button onClick={() => setActiveSection(actionSection)} className="text-[11px] text-muted-foreground hover:text-primary font-medium transition-colors flex items-center gap-0.5 px-2 py-1 rounded-md hover:bg-secondary/50">
+          <button onClick={() => setActiveSection(actionSection)} className="text-[11px] text-muted-foreground hover:text-primary font-semibold transition-colors flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-secondary/50">
             {actionLabel || 'View All'} <ChevronRight size={11} />
           </button>
         )}
@@ -189,43 +207,52 @@ export default function DashboardHome() {
     </div>
   );
 
-  // ─── Widget Base ────────────────────────────────────────────────
-  const widgetBase = 'h-full rounded-2xl border border-border/40 bg-card shadow-[var(--shadow-xs)] overflow-hidden transition-all duration-300 hover:shadow-[var(--shadow-md)] hover:border-border/70';
+  // ─── Widget Base — 24px radius SOTA ────────────────────────────────
+  const widgetBase = 'h-full bg-card border border-border/30 overflow-hidden transition-all duration-300 hover:shadow-[var(--shadow-lg)] hover:border-border/60';
+  const widgetRadius = { borderRadius: '24px' };
 
   const renderWidget = (widgetId: string, i: number) => {
     switch (widgetId) {
       case 'stats':
         return (
-          <div className={`${widgetBase} p-0`}>
+          <div className={`${widgetBase} p-0`} style={widgetRadius}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 h-full">
               {stats.map((s, si) => (
                 <motion.div key={s.label} {...fadeUp(si)}
-                  className={`p-5 cursor-pointer group relative overflow-hidden transition-all duration-300 hover:bg-gradient-to-b hover:from-transparent hover:to-secondary/20 ${si < stats.length - 1 ? 'lg:border-r border-b lg:border-b-0 border-border/30' : ''}`}
+                  className={`p-7 cursor-pointer group relative overflow-hidden transition-all duration-300
+                    ${si < stats.length - 1 ? 'lg:border-r border-b lg:border-b-0 border-border/20' : ''}
+                    ${s.isHero ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground' : 'hover:bg-secondary/20'}`}
+                  style={si === 0 ? { borderRadius: '24px 0 0 24px' } : si === stats.length - 1 ? { borderRadius: '0 24px 24px 0' } : {}}
                   onClick={() => setActiveSection(s.section)}>
-                  {/* Subtle corner glow on hover */}
-                  <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl" style={{ backgroundColor: `${s.accent}20` }} />
-                  
+
                   <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${s.accent}10` }}>
-                          <s.icon size={15} style={{ color: s.accent }} />
-                        </div>
-                        <span className="text-[11px] font-medium text-muted-foreground">{s.label}</span>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className={`text-xs font-semibold ${s.isHero ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{s.label}</span>
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${s.isHero ? 'bg-primary-foreground/15' : 'bg-secondary/60'}`}>
+                        <ArrowUpRight size={14} className={s.isHero ? 'text-primary-foreground' : 'text-muted-foreground/60'} />
                       </div>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <div className="text-[28px] font-extrabold text-foreground tracking-tighter leading-none mb-1">{s.value}</div>
+                        <motion.div
+                          className={`text-4xl font-extrabold tracking-tighter leading-none mb-2 ${s.isHero ? '' : 'text-foreground'}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: si * 0.1 }}
+                        >
+                          {s.value}
+                        </motion.div>
                         <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${s.trend === 'up' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-                            {s.trend === 'up' ? <ArrowUp size={9} /> : <ArrowDown size={9} />}
-                            {s.change}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground/50">{s.sub}</span>
+                          {s.change && (
+                            <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full
+                              ${s.isHero ? 'bg-primary-foreground/15 text-primary-foreground' : 'bg-success/10 text-success'}`}>
+                              {s.trend === 'up' ? <ArrowUp size={9} /> : <ArrowDown size={9} />}
+                              {s.change}
+                            </span>
+                          )}
+                          <span className={`text-[10px] ${s.isHero ? 'text-primary-foreground/60' : 'text-muted-foreground/50'}`}>{s.sub}</span>
                         </div>
                       </div>
-                      <MiniChart data={s.sparkline} color={s.accent} />
                     </div>
                   </div>
                 </motion.div>
@@ -236,29 +263,29 @@ export default function DashboardHome() {
 
       case 'tasks-focus':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
             <WidgetHeader icon={Zap} title="Today's Focus" actionSection="tasks"
               rightContent={
                 <div className="flex items-center gap-1.5">
                   {dueToday > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-destructive bg-destructive/8 px-2 py-0.5 rounded-md">
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-destructive bg-destructive/8 px-2.5 py-1 rounded-full">
                       <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
                       {dueToday} due
                     </span>
                   )}
                   {completedToday > 0 && (
-                    <span className="text-[10px] font-semibold text-success bg-success/8 px-2 py-0.5 rounded-md">{completedToday} done</span>
+                    <span className="text-[10px] font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">{completedToday} done</span>
                   )}
                 </div>
               }
             />
             {/* Task completion progress */}
-            <div className="mb-4 px-1">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] text-muted-foreground font-medium">Completion</span>
-                <span className="text-[10px] font-semibold text-foreground">{totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0}%</span>
+            <div className="mb-5 px-1">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-muted-foreground font-medium">Completion</span>
+                <span className="text-[11px] font-bold text-foreground">{totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0}%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div className="h-2 rounded-full bg-secondary overflow-hidden">
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
                   initial={{ width: 0 }}
@@ -267,15 +294,15 @@ export default function DashboardHome() {
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-auto space-y-0.5">
+            <div className="flex-1 overflow-auto space-y-1">
               {todayTasks.map((task, ti) => {
                 const pc = priorityConfig[task.priority] || priorityConfig.medium;
                 return (
                   <motion.div key={task.id} {...fadeUp(ti)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/50 transition-all group cursor-pointer">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${pc.dot} ring-2 ring-offset-1 ring-offset-card ${pc.bg}`} />
+                    className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-secondary/40 transition-all group cursor-pointer">
+                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${pc.dot} ring-2 ring-offset-2 ring-offset-card ${pc.bg}`} />
                     <span className="text-[13px] text-foreground flex-1 truncate font-medium">{task.title}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${pc.bg} ${pc.color}`}>{pc.label}</span>
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${pc.bg} ${pc.color}`}>{pc.label}</span>
                     <span className={`text-[10px] font-mono flex-shrink-0 tabular-nums ${task.dueDate < today ? 'text-destructive font-bold' : 'text-muted-foreground/40'}`}>
                       {task.dueDate === today ? 'Today' : task.dueDate}
                     </span>
@@ -283,10 +310,10 @@ export default function DashboardHome() {
                 );
               })}
               {todayTasks.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground/40">
-                  <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={spring} className="text-4xl mb-3">🎉</motion.div>
+                <div className="text-center py-14 text-muted-foreground/40">
+                  <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="text-5xl mb-4">🎉</motion.div>
                   <p className="text-sm font-semibold text-foreground/60">All caught up!</p>
-                  <p className="text-[11px] text-muted-foreground/40 mt-0.5">No pending tasks</p>
+                  <p className="text-[11px] text-muted-foreground/40 mt-1">No pending tasks</p>
                 </div>
               )}
             </div>
@@ -295,52 +322,64 @@ export default function DashboardHome() {
 
       case 'deadlines':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
-            <WidgetHeader icon={Calendar} title="Upcoming Deadlines" actionLabel="Calendar" actionSection="calendar" />
-            <div className="flex-1 overflow-auto space-y-0.5">
-              {upcomingDeadlines.map((task, ti) => {
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
+            <WidgetHeader icon={Calendar} title="Reminders" actionLabel="Calendar" actionSection="calendar" />
+            <div className="flex-1 overflow-auto space-y-1">
+              {upcomingDeadlines.length > 0 && (
+                <div className="mb-5 p-5 rounded-2xl bg-secondary/30 border border-border/20">
+                  <h4 className="text-sm font-bold text-foreground mb-1">{upcomingDeadlines[0].title}</h4>
+                  <p className="text-[11px] text-muted-foreground mb-4">
+                    Time : {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - {new Date(Date.now() + 7200000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <button
+                    onClick={() => setActiveSection('calendar')}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all shadow-[var(--shadow-primary)]"
+                  >
+                    <Calendar size={13} /> Start Meeting
+                  </button>
+                </div>
+              )}
+              {upcomingDeadlines.slice(1).map((task, ti) => {
                 const daysLeft = Math.ceil((new Date(task.dueDate).getTime() - Date.now()) / 86400000);
-                const urgency = daysLeft <= 1 ? 'destructive' : daysLeft <= 3 ? 'warning' : 'muted-foreground';
                 return (
-                  <motion.div key={task.id} {...fadeUp(ti)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/50 transition-all">
-                    <div className="w-8 text-center">
-                      <div className="text-[10px] text-muted-foreground/50 font-medium leading-none">{new Date(task.dueDate).toLocaleDateString('en', { month: 'short' })}</div>
-                      <div className={`text-base font-bold leading-tight text-${urgency}`}>{new Date(task.dueDate).getDate()}</div>
+                  <motion.div key={task.id} {...fadeUp(ti)} className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-secondary/40 transition-all">
+                    <div className="w-9 text-center">
+                      <div className="text-[9px] text-muted-foreground/50 font-medium leading-none">{new Date(task.dueDate).toLocaleDateString('en', { month: 'short' })}</div>
+                      <div className={`text-base font-bold leading-tight ${daysLeft <= 1 ? 'text-destructive' : daysLeft <= 3 ? 'text-warning' : 'text-foreground'}`}>{new Date(task.dueDate).getDate()}</div>
                     </div>
-                    <div className="h-8 w-px bg-border/40" />
+                    <div className="h-8 w-px bg-border/30" />
                     <span className="text-[13px] text-foreground flex-1 truncate font-medium">{task.title}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${daysLeft <= 1 ? 'bg-destructive/8 text-destructive' : daysLeft <= 3 ? 'bg-warning/8 text-warning' : 'bg-secondary text-muted-foreground'}`}>
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${daysLeft <= 1 ? 'bg-destructive/8 text-destructive' : daysLeft <= 3 ? 'bg-warning/8 text-warning' : 'bg-secondary text-muted-foreground'}`}>
                       {daysLeft <= 0 ? 'Today' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft}d left`}
                     </span>
                   </motion.div>
                 );
               })}
-              {upcomingDeadlines.length === 0 && <div className="text-center py-12 text-muted-foreground/40 text-sm font-medium">No upcoming deadlines 🌟</div>}
+              {upcomingDeadlines.length === 0 && <div className="text-center py-14 text-muted-foreground/40 text-sm font-medium">No upcoming deadlines 🌟</div>}
             </div>
           </div>
         );
 
       case 'finance':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
             <WidgetHeader icon={DollarSign} title="Finance Overview" actionLabel="Details" actionSection="payments" />
-            <div className="grid grid-cols-3 gap-2.5 mb-4">
+            <div className="grid grid-cols-3 gap-3 mb-5">
               {[
-                { label: 'Income', value: totalIncome, icon: ArrowUpRight, color: 'hsl(var(--success))', textColor: 'text-success', bgColor: 'bg-success/6' },
-                { label: 'Expenses', value: totalExpenses, icon: ArrowDownRight, color: 'hsl(var(--destructive))', textColor: 'text-destructive', bgColor: 'bg-destructive/6' },
-                { label: 'Pending', value: pendingAmount, icon: Clock, color: 'hsl(var(--warning))', textColor: 'text-warning', bgColor: 'bg-warning/6' },
+                { label: 'Income', value: totalIncome, icon: ArrowUpRight, textColor: 'text-success', bgColor: 'bg-success/6' },
+                { label: 'Expenses', value: totalExpenses, icon: ArrowDownRight, textColor: 'text-destructive', bgColor: 'bg-destructive/6' },
+                { label: 'Pending', value: pendingAmount, icon: Clock, textColor: 'text-warning', bgColor: 'bg-warning/6' },
               ].map(d => (
-                <motion.div key={d.label} whileHover={{ y: -2 }} className={`text-center p-3.5 rounded-xl ${d.bgColor} border border-border/20 transition-all cursor-default`}>
-                  <d.icon size={14} className={`${d.textColor} mx-auto mb-2 opacity-60`} />
-                  <div className={`text-lg font-bold ${d.textColor} tabular-nums leading-tight`}>{fmt(d.value)}</div>
-                  <div className="text-[10px] text-muted-foreground mt-1 font-medium">{d.label}</div>
+                <motion.div key={d.label} whileHover={{ y: -2 }} className={`text-center p-4 rounded-2xl ${d.bgColor} border border-border/15 transition-all cursor-default`}>
+                  <d.icon size={14} className={`${d.textColor} mx-auto mb-2.5 opacity-60`} />
+                  <div className={`text-lg font-extrabold ${d.textColor} tabular-nums leading-tight`}>{fmt(d.value)}</div>
+                  <div className="text-[10px] text-muted-foreground mt-1.5 font-medium">{d.label}</div>
                 </motion.div>
               ))}
             </div>
-            {/* Net profit with ring */}
-            <div className="mt-auto flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-secondary/40 to-secondary/20 border border-border/20">
+            <div className="mt-auto flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-secondary/30 to-secondary/15 border border-border/15">
               <div className="relative flex items-center justify-center">
-                <ProgressRing value={totalIncome} max={totalIncome + totalExpenses} color="hsl(var(--success))" />
+                <SmallProgressRing value={totalIncome} max={totalIncome + totalExpenses} color="hsl(var(--success))" />
                 <DollarSign size={14} className="absolute text-success" />
               </div>
               <div>
@@ -353,54 +392,42 @@ export default function DashboardHome() {
 
       case 'activity':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
-            <WidgetHeader icon={Activity} title="Recent Activity" />
-            <div className="flex-1 overflow-auto">
-              {[
-                { text: 'Deployed SaaS Landing Page', time: '2h ago', emoji: '🚀', type: 'deploy' },
-                { text: 'Completed SSL renewal', time: '5h ago', emoji: '✅', type: 'security' },
-                { text: '3 commits to ai-mission-control', time: '8h ago', emoji: '🐙', type: 'code' },
-                { text: 'New blog post draft added', time: '1d ago', emoji: '📝', type: 'content' },
-                { text: 'WooCommerce v9.2 update', time: '1d ago', emoji: '🔌', type: 'update' },
-                { text: 'Fixed responsive layout', time: '2d ago', emoji: '🔧', type: 'fix' },
-              ].map((a, ai) => (
-                <motion.div key={ai} {...fadeUp(ai)} className="flex items-center gap-3 px-2 py-2.5 group">
-                  {/* Timeline line */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="w-7 h-7 rounded-lg bg-secondary/60 flex items-center justify-center text-xs group-hover:bg-primary/10 transition-colors">{a.emoji}</div>
-                    {ai < 5 && <div className="w-px h-3 bg-border/30" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[12px] text-foreground block truncate font-medium">{a.text}</span>
-                    <span className="text-[10px] text-muted-foreground/40 tabular-nums">{a.time}</span>
-                  </div>
-                </motion.div>
-              ))}
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-[15px] text-foreground tracking-tight">Project Analytics</h3>
             </div>
+            <PillBars data={taskSparkline} color="hsl(var(--primary))" />
           </div>
         );
 
       case 'quick-links':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
-            <WidgetHeader icon={ExternalLink} title="Quick Access" actionLabel="All Links" actionSection="links" />
-            <div className="grid grid-cols-2 gap-2 flex-1 content-start">
-              {quickLinks.map((link, li) => (
-                <motion.a key={link.id} {...fadeUp(li)} href={link.url} target="_blank" rel="noopener noreferrer"
-                  whileHover={{ y: -1, scale: 1.01 }}
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-secondary/20 hover:bg-secondary/50 transition-all group border border-border/20 hover:border-border/50">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/10 to-accent/5 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0 group-hover:from-primary group-hover:to-primary group-hover:text-primary-foreground transition-all shadow-sm">
-                    {link.title.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold text-foreground truncate block">{link.title}</span>
-                    <span className="text-[9px] text-muted-foreground/40 truncate block">{link.category}</span>
-                  </div>
-                </motion.a>
-              ))}
-              {quickLinks.length === 0 && (
-                <div className="col-span-2 text-center py-8 text-muted-foreground/40 text-sm">
-                  <button onClick={() => setActiveSection('links')} className="text-primary hover:underline font-medium text-xs">Pin some links</button>
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-[15px] text-foreground tracking-tight">Project</h3>
+              <button onClick={() => setActiveSection('builds')} className="text-[11px] text-primary font-semibold px-3 py-1.5 rounded-xl border border-primary/20 hover:bg-primary/5 transition-all flex items-center gap-1">
+                <Plus size={11} /> New
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto space-y-1.5">
+              {recentBuilds.map((build, bi) => {
+                const statusColor = build.status === 'deployed' ? 'text-success' : build.status === 'building' ? 'text-info' : 'text-warning';
+                const icons = ['🔧', '🚀', '📦', '⚡', '🎯'];
+                return (
+                  <motion.div key={build.id} {...fadeUp(bi)} className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-secondary/40 transition-all cursor-pointer">
+                    <div className="w-9 h-9 rounded-xl bg-secondary/60 flex items-center justify-center text-base">
+                      {icons[bi % icons.length]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[12px] text-foreground font-semibold truncate block">{build.name}</span>
+                      <span className="text-[10px] text-muted-foreground/50">Due date: {build.lastWorkedOn}</span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {recentBuilds.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground/40 text-sm">
+                  <button onClick={() => setActiveSection('builds')} className="text-primary hover:underline font-medium text-xs">Add a project</button>
                 </div>
               )}
             </div>
@@ -409,27 +436,30 @@ export default function DashboardHome() {
 
       case 'platforms':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
-            <WidgetHeader icon={BarChart3} title="Platform Status" />
-            <div className="space-y-2 flex-1">
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-[15px] text-foreground tracking-tight">Team Collaboration</h3>
+              <button onClick={() => setActiveSection('settings')} className="text-[11px] text-muted-foreground font-semibold px-3 py-1.5 rounded-xl border border-border/30 hover:bg-secondary/50 transition-all flex items-center gap-1">
+                <Plus size={11} /> Add Member
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto space-y-1">
               {[
-                { name: 'Cloudflare', section: 'cloudflare', ok: true, emoji: '☁️', uptime: '99.9%' },
-                { name: 'Vercel', section: 'vercel', ok: true, emoji: '🚀', uptime: '99.8%' },
-                { name: 'Google SC', section: 'seo', ok: false, emoji: '🔍', uptime: '—' },
-                { name: 'OpenClaw', section: 'openclaw', ok: true, emoji: '🐙', uptime: '100%' },
-              ].map(p => (
-                <motion.button key={p.name} onClick={() => setActiveSection(p.section)} whileHover={{ x: 2 }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/40 transition-all border border-transparent hover:border-border/30">
-                  <span className="text-lg">{p.emoji}</span>
-                  <div className="text-left flex-1">
-                    <div className="text-xs font-semibold text-foreground">{p.name}</div>
-                    <div className={`text-[10px] font-medium flex items-center gap-1 ${p.ok ? 'text-success' : 'text-warning'}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${p.ok ? 'bg-success' : 'bg-warning'} ${!p.ok ? 'animate-pulse' : ''}`} />
-                      {p.ok ? 'Operational' : 'Warning'}
-                    </div>
+                { name: 'Alexandra Deff', task: 'Github Project Repository', status: 'Completed', statusColor: 'text-success bg-success/8' },
+                { name: 'Edwin Adenike', task: 'Integrate User Authentication', status: 'In Progress', statusColor: 'text-info bg-info/8' },
+                { name: 'Isaac Oluwatemilorun', task: 'Develop Search and Filter', status: 'Pending', statusColor: 'text-warning bg-warning/8' },
+                { name: 'David Oshodi', task: 'Responsive Layout for Homepage', status: 'In Progress', statusColor: 'text-info bg-info/8' },
+              ].map((member, mi) => (
+                <motion.div key={mi} {...fadeUp(mi)} className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-secondary/40 transition-all">
+                  <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-[11px] font-bold flex-shrink-0 shadow-sm">
+                    {member.name.split(' ').map(n => n[0]).join('')}
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground/40 tabular-nums">{p.uptime}</span>
-                </motion.button>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[12px] text-foreground font-semibold block truncate">{member.name}</span>
+                    <span className="text-[10px] text-muted-foreground/50 truncate block">Working on <strong className="text-foreground/70">{member.task}</strong></span>
+                  </div>
+                  <span className={`text-[9px] px-2.5 py-1 rounded-full font-semibold ${member.statusColor}`}>{member.status}</span>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -437,76 +467,91 @@ export default function DashboardHome() {
 
       case 'ideas':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
-            <WidgetHeader icon={Lightbulb} title="Top Ideas" actionSection="ideas" />
-            <div className="flex-1 overflow-auto space-y-1">
-              {topIdeas.map((idea, ii) => (
-                <motion.div key={idea.id} {...fadeUp(ii)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-secondary/40 transition-all group">
-                  <div className="flex flex-col items-center">
-                    <motion.span whileHover={{ scale: 1.1 }} className="text-xs font-extrabold text-primary bg-primary/8 w-8 h-8 rounded-lg flex items-center justify-center tabular-nums cursor-pointer">{idea.votes}</motion.span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[12px] text-foreground truncate block font-semibold">{idea.title}</span>
-                    <span className="text-[10px] text-muted-foreground/40">{idea.category}</span>
-                  </div>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-md font-semibold capitalize ${idea.status === 'validated' ? 'bg-success/8 text-success' : idea.status === 'exploring' ? 'bg-info/8 text-info' : 'bg-secondary text-muted-foreground'}`}>{idea.status}</span>
-                </motion.div>
-              ))}
-              {topIdeas.length === 0 && <div className="text-center py-8 text-muted-foreground/40 text-sm">No active ideas</div>}
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-[15px] text-foreground tracking-tight">Project Progress</h3>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <LargeProgressRing value={doneTasks} max={totalTasks || 1} color="hsl(var(--primary))" />
+              <div className="flex items-center gap-6 mt-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                  <span className="text-[10px] text-muted-foreground font-medium">Completed</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-info" />
+                  <span className="text-[10px] text-muted-foreground font-medium">In Progress</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-warning" />
+                  <span className="text-[10px] text-muted-foreground font-medium">Pending</span>
+                </div>
+              </div>
             </div>
           </div>
         );
 
       case 'notes-preview':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
             <WidgetHeader icon={Pin} title="Pinned Notes" actionLabel="Notes" actionSection="notes" />
-            <div className="flex-1 overflow-auto space-y-2">
+            <div className="flex-1 overflow-auto space-y-2.5">
               {pinnedNotes.map((note, ni) => {
-                const colors = ['from-info/5 to-transparent', 'from-warning/5 to-transparent', 'from-success/5 to-transparent'];
+                const colors = ['from-primary/5 to-transparent', 'from-warning/5 to-transparent', 'from-info/5 to-transparent'];
                 return (
                   <motion.button key={note.id} {...fadeUp(ni)} onClick={() => setActiveSection('notes')} whileHover={{ scale: 1.01 }}
-                    className={`w-full text-left p-3.5 rounded-xl bg-gradient-to-r ${colors[ni % colors.length]} border border-border/20 hover:border-border/50 transition-all`}>
+                    className={`w-full text-left p-4 rounded-2xl bg-gradient-to-r ${colors[ni % colors.length]} border border-border/15 hover:border-border/40 transition-all`}>
                     <div className="text-[12px] font-semibold text-foreground truncate">{note.title}</div>
-                    <div className="text-[10px] text-muted-foreground/40 line-clamp-2 mt-1 leading-relaxed">{note.content.slice(0, 100)}</div>
+                    <div className="text-[10px] text-muted-foreground/40 line-clamp-2 mt-1.5 leading-relaxed">{note.content.slice(0, 100)}</div>
                   </motion.button>
                 );
               })}
-              {pinnedNotes.length === 0 && <div className="text-center py-8 text-muted-foreground/40 text-sm">No pinned notes</div>}
+              {pinnedNotes.length === 0 && <div className="text-center py-10 text-muted-foreground/40 text-sm">No pinned notes</div>}
             </div>
           </div>
         );
 
       case 'quote':
         return (
-          <div className={`${widgetBase} p-6 flex flex-col justify-center relative overflow-hidden`}>
-            {/* Decorative gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-accent/[0.02]" />
-            <div className="absolute top-4 right-4 w-20 h-20 rounded-full bg-primary/5 blur-2xl" />
-            <div className="relative z-10">
-              <Sparkles size={14} className="text-primary/30 mb-4" />
-              <div className="text-[13px] font-medium text-foreground/70 italic leading-relaxed">"{quote.text}"</div>
-              <div className="text-[10px] text-muted-foreground/30 mt-4 font-semibold tracking-wide uppercase">— {quote.author}</div>
+          <div className="h-full overflow-hidden transition-all duration-300" style={{ borderRadius: '24px', background: 'hsl(220 25% 12%)', color: 'hsl(210 15% 95%)' }}>
+            <div className="p-7 h-full flex flex-col justify-between relative overflow-hidden">
+              {/* Decorative gradient orbs */}
+              <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/10 blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-info/10 blur-2xl" />
+              <div className="relative z-10">
+                <div className="text-[11px] font-semibold text-primary mb-4 uppercase tracking-wider">Time Tracker</div>
+                <div className="text-4xl font-extrabold tracking-tight tabular-nums text-white">
+                  {new Date().toLocaleTimeString('en-US', { hour12: false })}
+                </div>
+              </div>
+              <div className="relative z-10 flex items-center gap-3 mt-6">
+                <button className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+                  <div className="w-0 h-0 border-l-[6px] border-l-white border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent ml-0.5" />
+                </button>
+                <button className="w-10 h-10 rounded-2xl bg-destructive/80 hover:bg-destructive flex items-center justify-center transition-all">
+                  <div className="w-3 h-3 rounded-sm bg-white" />
+                </button>
+              </div>
             </div>
           </div>
         );
 
       case 'habits':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
             <WidgetHeader icon={Flame} title="Habit Tracker" actionSection="habits" />
             <div className="flex-1 overflow-auto space-y-1">
               {habits.length > 0 ? habits.slice(0, 5).map((h, hi) => (
-                <motion.div key={h.id} {...fadeUp(hi)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/40 transition-all">
+                <motion.div key={h.id} {...fadeUp(hi)} className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-secondary/40 transition-all">
                   <span className="text-lg">{h.icon}</span>
                   <span className="text-[12px] text-foreground flex-1 truncate font-medium">{h.name}</span>
-                  <div className="flex items-center gap-1">
-                    <Flame size={11} className="text-warning" />
+                  <div className="flex items-center gap-1.5">
+                    <Flame size={12} className="text-warning" />
                     <span className="text-[11px] font-bold text-warning tabular-nums">{h.streak}</span>
                   </div>
                 </motion.div>
               )) : (
-                <div className="text-center py-12 text-muted-foreground/40 text-sm">
+                <div className="text-center py-14 text-muted-foreground/40 text-sm">
                   <p className="font-medium text-foreground/50">No habits yet</p>
                   <button onClick={() => setActiveSection('habits')} className="text-primary hover:underline text-xs mt-1">Start tracking</button>
                 </div>
@@ -517,23 +562,21 @@ export default function DashboardHome() {
 
       case 'websites-summary':
         return (
-          <div className={`${widgetBase} p-5 flex flex-col`}>
+          <div className={`${widgetBase} p-7 flex flex-col`} style={widgetRadius}>
             <WidgetHeader icon={Globe} title="Websites" actionLabel="Manage" actionSection="websites"
               rightContent={
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-semibold text-success bg-success/8 px-2 py-0.5 rounded-md">{activeSites} live</span>
-                </div>
+                <span className="text-[10px] font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">{activeSites} live</span>
               }
             />
-            <div className="flex-1 overflow-auto space-y-0.5">
+            <div className="flex-1 overflow-auto space-y-1">
               {websites.slice(0, 5).map((w, wi) => (
-                <motion.div key={w.id} {...fadeUp(wi)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary/40 transition-all group cursor-pointer">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${w.status === 'active' ? 'bg-success' : w.status === 'maintenance' ? 'bg-warning' : 'bg-destructive'} ring-2 ring-offset-1 ring-offset-card ${w.status === 'active' ? 'ring-success/20' : w.status === 'maintenance' ? 'ring-warning/20' : 'ring-destructive/20'}`} />
+                <motion.div key={w.id} {...fadeUp(wi)} className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-secondary/40 transition-all group cursor-pointer">
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${w.status === 'active' ? 'bg-success' : w.status === 'maintenance' ? 'bg-warning' : 'bg-destructive'} ring-2 ring-offset-2 ring-offset-card ${w.status === 'active' ? 'ring-success/20' : w.status === 'maintenance' ? 'ring-warning/20' : 'ring-destructive/20'}`} />
                   <div className="flex-1 min-w-0">
                     <span className="text-[12px] text-foreground truncate block font-semibold">{w.name}</span>
                     <span className="text-[10px] text-muted-foreground/40">{w.hostingProvider || w.category}</span>
                   </div>
-                  <a href={w.url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-all p-1 rounded-md hover:bg-secondary" onClick={e => e.stopPropagation()}>
+                  <a href={w.url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-all p-1.5 rounded-xl hover:bg-secondary" onClick={e => e.stopPropagation()}>
                     <ExternalLink size={12} className="text-primary" />
                   </a>
                 </motion.div>
@@ -543,7 +586,7 @@ export default function DashboardHome() {
         );
 
       default:
-        return <div className={`${widgetBase} p-5 flex items-center justify-center text-muted-foreground/30 text-sm`}>Widget: {widgetId}</div>;
+        return <div className={`${widgetBase} p-7 flex items-center justify-center text-muted-foreground/30 text-sm`} style={widgetRadius}>Widget: {widgetId}</div>;
     }
   };
 
@@ -552,39 +595,39 @@ export default function DashboardHome() {
   const filteredWidgetDefs = configTab === 'all' ? widgetDefinitions : widgetDefinitions.filter(w => w.category === configTab);
 
   return (
-    <div className="space-y-5">
-      {/* Page Header */}
-      <motion.div {...fadeUp(0)} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+    <div className="space-y-6">
+      {/* Page Header — Dribbble style */}
+      <motion.div {...fadeUp(0)} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Dashboard</h1>
-          <p className="text-[13px] text-muted-foreground/60 mt-0.5">Welcome back, <span className="font-semibold text-foreground/80">{userName}</span>. Here's what's happening.</p>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Dashboard</h1>
+          <p className="text-[14px] text-muted-foreground/50 mt-1">Plan, prioritize, and accomplish your tasks with ease.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {completedToday > 0 && (
-            <motion.div {...fadeUp(1)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/6 border border-success/15 text-success text-[11px] font-semibold shadow-sm">
-              <Target size={11} /> {completedToday} completed today
+            <motion.div {...fadeUp(1)} className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-success/6 border border-success/15 text-success text-[11px] font-semibold shadow-sm">
+              <Target size={12} /> {completedToday} completed today
             </motion.div>
           )}
           {overdueTasks > 0 && (
-            <motion.div {...fadeUp(2)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/6 border border-destructive/15 text-destructive text-[11px] font-semibold shadow-sm animate-pulse">
+            <motion.div {...fadeUp(2)} className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-destructive/6 border border-destructive/15 text-destructive text-[11px] font-semibold shadow-sm animate-pulse">
               ⚠️ {overdueTasks} overdue
             </motion.div>
           )}
-          <div className="h-5 w-px bg-border/40 hidden sm:block" />
+          <div className="h-6 w-px bg-border/30 hidden sm:block" />
           <motion.button {...fadeUp(3)} onClick={() => setIsLocked(!isLocked)}
-            className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all border shadow-sm ${isLocked ? 'text-muted-foreground border-border/50 bg-card hover:bg-secondary' : 'text-primary bg-primary/6 border-primary/20'}`}>
-            {isLocked ? <Lock size={11} /> : <Unlock size={11} />}
+            className={`flex items-center gap-1.5 text-[11px] font-semibold px-4 py-2 rounded-2xl transition-all border shadow-sm ${isLocked ? 'text-muted-foreground border-border/40 bg-card hover:bg-secondary' : 'text-primary bg-primary/6 border-primary/20'}`}>
+            {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
             {isLocked ? 'Locked' : 'Editing'}
           </motion.button>
           <motion.button {...fadeUp(4)} onClick={() => setConfigOpen(!configOpen)}
-            className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all border shadow-sm ${configOpen ? 'text-primary bg-primary/6 border-primary/20' : 'text-muted-foreground border-border/50 bg-card hover:bg-secondary'}`}>
-            <LayoutGrid size={12} /> Customize
+            className={`flex items-center gap-1.5 text-[11px] font-semibold px-4 py-2 rounded-2xl transition-all border shadow-sm ${configOpen ? 'text-primary bg-primary/6 border-primary/20' : 'text-muted-foreground border-border/40 bg-card hover:bg-secondary'}`}>
+            <LayoutGrid size={13} /> Customize
             <ChevronDown size={10} className={`transition-transform ${configOpen ? 'rotate-180' : ''}`} />
           </motion.button>
         </div>
       </motion.div>
 
-      {/* ─── Widget Configurator (Enterprise Grade) ──────────────────── */}
+      {/* ─── Widget Configurator ──────────────────────────────────────── */}
       <AnimatePresence>
         {configOpen && (
           <motion.div
@@ -594,74 +637,63 @@ export default function DashboardHome() {
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="rounded-2xl border border-border/50 bg-card shadow-[var(--shadow-md)] overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border/30 bg-gradient-to-r from-secondary/20 to-transparent">
+            <div className="border border-border/40 bg-card overflow-hidden" style={{ borderRadius: '24px', boxShadow: 'var(--shadow-md)' }}>
+              <div className="flex items-center justify-between px-7 py-5 border-b border-border/20 bg-gradient-to-r from-secondary/15 to-transparent">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 flex items-center justify-center">
-                    <LayoutGrid size={16} className="text-primary" />
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/12 to-accent/8 flex items-center justify-center">
+                    <LayoutGrid size={17} className="text-primary" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-foreground">Customize Dashboard</h3>
-                    <p className="text-[10px] text-muted-foreground/50">Toggle widgets, reset layout, manage your view</p>
+                    <p className="text-[10px] text-muted-foreground/45">Toggle widgets, reset layout, manage your view</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-2 py-1 rounded-md">{visibleWidgets.length}/{widgetDefinitions.length} active</span>
-                  <button onClick={() => setConfigOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                  <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-2.5 py-1.5 rounded-xl">{visibleWidgets.length}/{widgetDefinitions.length} active</span>
+                  <button onClick={() => setConfigOpen(false)} className="p-2 rounded-xl hover:bg-secondary transition-colors">
                     <X size={14} className="text-muted-foreground" />
                   </button>
                 </div>
               </div>
-
-              {/* Category tabs */}
-              <div className="flex items-center gap-1 px-5 pt-4 pb-2 overflow-x-auto hide-scrollbar">
+              <div className="flex items-center gap-1.5 px-7 pt-5 pb-3 overflow-x-auto hide-scrollbar">
                 {categories.map(cat => (
                   <button key={cat} onClick={() => setConfigTab(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold capitalize transition-all whitespace-nowrap ${configTab === cat ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}>
+                    className={`px-4 py-2 rounded-2xl text-[11px] font-semibold capitalize transition-all whitespace-nowrap ${configTab === cat ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}>
                     {cat === 'all' ? 'All Widgets' : cat}
                   </button>
                 ))}
               </div>
-
-              {/* Widget grid */}
-              <div className="px-5 py-3 pb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+              <div className="px-7 py-4 pb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
                   {filteredWidgetDefs.map(w => {
                     const isVisible = visibility[w.id] !== false;
                     return (
-                      <motion.button
-                        key={w.id}
-                        onClick={() => toggleWidgetVisibility(w.id)}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className={`flex items-center gap-3 p-3 rounded-xl text-left transition-all border ${isVisible
-                          ? 'bg-primary/5 border-primary/20 shadow-sm'
-                          : 'bg-secondary/20 border-border/20 hover:border-border/40 opacity-60 hover:opacity-80'
-                        }`}
-                      >
+                      <motion.button key={w.id} onClick={() => toggleWidgetVisibility(w.id)}
+                        whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                        className={`flex items-center gap-3 p-4 rounded-2xl text-left transition-all border ${isVisible
+                          ? 'bg-primary/5 border-primary/15 shadow-sm'
+                          : 'bg-secondary/15 border-border/15 hover:border-border/35 opacity-60 hover:opacity-80'
+                          }`}>
                         <span className="text-base">{w.icon}</span>
                         <div className="flex-1 min-w-0">
                           <div className="text-[11px] font-semibold text-foreground truncate">{w.title}</div>
                           <div className="text-[9px] text-muted-foreground/40 truncate">{w.description}</div>
                         </div>
-                        <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${isVisible ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
-                          {isVisible ? <Eye size={10} /> : <EyeOff size={10} className="text-muted-foreground/40" />}
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isVisible ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
+                          {isVisible ? <Eye size={11} /> : <EyeOff size={11} className="text-muted-foreground/40" />}
                         </div>
                       </motion.button>
                     );
                   })}
                 </div>
               </div>
-
-              {/* Footer actions */}
-              <div className="flex items-center justify-between px-5 py-3 border-t border-border/30 bg-secondary/10">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between px-7 py-4 border-t border-border/20 bg-secondary/5">
+                <div className="flex items-center gap-2.5">
                   <button onClick={showAll} className="text-[10px] font-semibold text-primary hover:underline">Show All</button>
-                  <span className="text-muted-foreground/20">·</span>
+                  <span className="text-muted-foreground/15">·</span>
                   <button onClick={hideAll} className="text-[10px] font-semibold text-muted-foreground hover:text-foreground">Hide All</button>
                 </div>
-                <button onClick={resetLayout} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-md hover:bg-secondary">
+                <button onClick={resetLayout} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-secondary">
                   <RotateCcw size={10} /> Reset Layout
                 </button>
               </div>
@@ -681,15 +713,15 @@ export default function DashboardHome() {
         isResizable={!isLocked}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".drag-handle"
-        margin={[14, 14]}
+        margin={[16, 16]}
         containerPadding={[0, 0]}
         useCSSTransforms
       >
         {visibleWidgets.map((widget, i) => (
           <div key={widget.id} className="relative group">
             {!isLocked && (
-              <div className="drag-handle absolute top-2.5 left-2.5 z-10 cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-card/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all border border-border/30 shadow-sm">
-                <GripVertical size={11} className="text-muted-foreground/50" />
+              <div className="drag-handle absolute top-3 left-3 z-10 cursor-grab active:cursor-grabbing p-2 rounded-xl bg-card/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all border border-border/25 shadow-sm">
+                <GripVertical size={12} className="text-muted-foreground/50" />
               </div>
             )}
             {renderWidget(widget.id, i)}

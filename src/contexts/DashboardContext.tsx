@@ -1,16 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { db, genId, migrateFromLocalStorage } from '@/lib/db';
 import type { Website, Task, GitHubRepo, BuildProject, LinkItem, Note, Payment, Idea, CredentialVault, CustomModule, HabitTracker, UserSettings, WidgetLayout } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { isSupabaseConnected, pullFromSupabase, pushToSupabase } from '@/lib/supabase';
+import { useDataStore } from '@/stores/dataStore';
+import { isSupabaseConnected, pullFromSupabase } from '@/lib/supabase';
 
 // Re-export types for convenience
 export type { Website, Task, GitHubRepo, BuildProject, LinkItem, Note, Payment, Idea, CredentialVault, CustomModule, HabitTracker, UserSettings, WidgetLayout };
 
 interface DashboardContextValue {
-  // Data
+  // Data (from Dexie live queries — reactive)
   websites: Website[];
   tasks: Task[];
   repos: GitHubRepo[];
@@ -23,14 +24,14 @@ interface DashboardContextValue {
   customModules: CustomModule[];
   habits: HabitTracker[];
 
-  // Settings (delegated to Zustand but kept for backward compat)
+  // Settings (from Zustand stores — backward compat)
   userName: string;
   userRole: string;
   theme: 'light' | 'dark' | 'system';
   sidebarCollapsed: boolean;
   dashboardLayout: WidgetLayout[];
 
-  // Navigation (delegated to Zustand but kept for backward compat)
+  // Navigation (from Zustand — backward compat)
   activeSection: string;
   setActiveSection: (s: string) => void;
   sidebarOpen: boolean;
@@ -40,7 +41,7 @@ interface DashboardContextValue {
   toggleTheme: () => void;
   setTheme: (t: 'light' | 'dark' | 'system') => void;
 
-  // CRUD — generic
+  // CRUD — delegated to dataStore
   addItem: <T extends { id: string }>(table: string, item: Omit<T, 'id'>) => Promise<string>;
   updateItem: <T extends { id: string }>(table: string, id: string, changes: Partial<T>) => Promise<void>;
   deleteItem: (table: string, id: string) => Promise<void>;
@@ -60,7 +61,7 @@ interface DashboardContextValue {
   // Utility
   genId: () => string;
 
-  // Backward-compat: replaces entire table data (used by existing pages)
+  // Backward-compat
   updateData: (partial: Record<string, any>) => Promise<void>;
 }
 
@@ -159,27 +160,17 @@ async function seedDefaults() {
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
+// This is now a thin compatibility layer. All CRUD and state management is
+// delegated to Zustand stores (dataStore, settingsStore, navigationStore).
+// Live queries stay here because they require React hooks context.
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
-  // Delegate navigation to Zustand
+  // Zustand stores
   const { activeSection, setActiveSection, sidebarOpen, setSidebarOpen, sidebarCollapsed } = useNavigationStore();
-  const { userName, userRole, theme, toggleTheme, setTheme, loadSettings, updateSettings: zustandUpdateSettings } = useSettingsStore();
-  
-  const [isLoading, setIsLoading] = useState(true);
-  const initialized = useRef(false);
+  const { userName, userRole, theme, toggleTheme, setTheme, loadSettings } = useSettingsStore();
+  const { isLoading, setIsLoading, dashboardLayout, setDashboardLayout, addItem, updateItem, deleteItem, bulkAddItems, updateSettings, saveDashboardLayout, exportAllData, importAllData, updateData } = useDataStore();
 
-  // Debounced auto-push ref
-  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const schedulePush = useCallback(() => {
-    if (!isSupabaseConnected()) return;
-    if (pushTimer.current) clearTimeout(pushTimer.current);
-    pushTimer.current = setTimeout(() => {
-      pushToSupabase().then(r => {
-        if (r.success) console.log(`☁️ Auto-pushed ${r.synced} items`);
-        else console.warn('☁️ Auto-push failed:', r.error);
-      });
-    }, 2000); // 2s debounce
-  }, []);
+  const initialized = useRef(false);
 
   // Initialize DB, load settings, and auto-pull from Supabase
   useEffect(() => {
@@ -201,15 +192,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
         await seedDefaults();
         await loadSettings();
+
+        // Load dashboard layout into Zustand
+        const settings = await db.settings.get('default');
+        if (settings?.dashboardLayout) {
+          setDashboardLayout(settings.dashboardLayout);
+        }
       } catch (e) {
         console.error('DB init error:', e);
       } finally {
         setIsLoading(false);
       }
     })();
-  }, [loadSettings]);
+  }, [loadSettings, setIsLoading, setDashboardLayout]);
 
-  // Live queries — reactive to DB changes
+  // Live queries — reactive to DB changes (must be in React component)
   const websites = useLiveQuery(() => db.websites.toArray(), []) ?? [];
   const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? [];
   const repos = useLiveQuery(() => db.repos.toArray(), []) ?? [];
@@ -221,139 +218,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const credentials = useLiveQuery(() => db.credentials.toArray(), []) ?? [];
   const customModules = useLiveQuery(() => db.customModules.toArray(), []) ?? [];
   const habits = useLiveQuery(() => db.habits.toArray(), []) ?? [];
-  const settings = useLiveQuery(() => db.settings.get('default'), []);
-
-  const dashboardLayout = settings?.dashboardLayout ?? [];
-
-  // CRUD operations
-  const getTable = (tableName: string) => {
-    const tables: Record<string, any> = {
-      websites: db.websites,
-      tasks: db.tasks,
-      repos: db.repos,
-      buildProjects: db.buildProjects,
-      links: db.links,
-      notes: db.notes,
-      payments: db.payments,
-      ideas: db.ideas,
-      credentials: db.credentials,
-      customModules: db.customModules,
-      habits: db.habits,
-    };
-    return tables[tableName];
-  };
-
-  const addItem = useCallback(async <T extends { id: string }>(table: string, item: Omit<T, 'id'>): Promise<string> => {
-    const id = genId();
-    const tableRef = getTable(table);
-    if (!tableRef) throw new Error(`Unknown table: ${table}`);
-    await tableRef.put({ ...item, id });
-    schedulePush();
-    return id;
-  }, [schedulePush]);
-
-  const updateItem = useCallback(async <T extends { id: string }>(table: string, id: string, changes: Partial<T>): Promise<void> => {
-    const tableRef = getTable(table);
-    if (!tableRef) throw new Error(`Unknown table: ${table}`);
-    await tableRef.update(id, changes);
-    schedulePush();
-  }, [schedulePush]);
-
-  const deleteItem = useCallback(async (table: string, id: string): Promise<void> => {
-    const tableRef = getTable(table);
-    if (!tableRef) throw new Error(`Unknown table: ${table}`);
-    await tableRef.delete(id);
-    schedulePush();
-  }, [schedulePush]);
-
-  const bulkAddItems = useCallback(async <T extends { id: string }>(table: string, items: Omit<T, 'id'>[]): Promise<void> => {
-    const tableRef = getTable(table);
-    if (!tableRef) throw new Error(`Unknown table: ${table}`);
-    const withIds = items.map(item => ({ ...item, id: genId() }));
-    await tableRef.bulkPut(withIds);
-    schedulePush();
-  }, [schedulePush]);
-
-  const updateSettings = useCallback(async (changes: Partial<UserSettings>): Promise<void> => {
-    await db.settings.update('default', changes);
-    // Sync to Zustand
-    if (changes.userName || changes.userRole || changes.theme) {
-      await zustandUpdateSettings(changes);
-    }
-    if (changes.sidebarCollapsed !== undefined) {
-      useNavigationStore.getState().setSidebarCollapsed(changes.sidebarCollapsed);
-    }
-  }, [zustandUpdateSettings]);
-
-  const saveDashboardLayout = useCallback(async (layout: WidgetLayout[]): Promise<void> => {
-    await db.settings.update('default', { dashboardLayout: layout });
-  }, []);
-
-  const exportAllData = useCallback(async (): Promise<string> => {
-    const data = {
-      websites: await db.websites.toArray(),
-      tasks: await db.tasks.toArray(),
-      repos: await db.repos.toArray(),
-      buildProjects: await db.buildProjects.toArray(),
-      links: await db.links.toArray(),
-      notes: await db.notes.toArray(),
-      payments: await db.payments.toArray(),
-      ideas: await db.ideas.toArray(),
-      credentials: await db.credentials.toArray(),
-      customModules: await db.customModules.toArray(),
-      habits: await db.habits.toArray(),
-      settings: await db.settings.get('default'),
-      exportedAt: new Date().toISOString(),
-      version: '8.0',
-    };
-    return JSON.stringify(data, null, 2);
-  }, []);
-
-  const importAllData = useCallback(async (json: string): Promise<void> => {
-    const data = JSON.parse(json);
-    if (data.websites) { await db.websites.clear(); await db.websites.bulkPut(data.websites); }
-    if (data.tasks) { await db.tasks.clear(); await db.tasks.bulkPut(data.tasks); }
-    if (data.repos) { await db.repos.clear(); await db.repos.bulkPut(data.repos); }
-    if (data.buildProjects) { await db.buildProjects.clear(); await db.buildProjects.bulkPut(data.buildProjects); }
-    if (data.links) { await db.links.clear(); await db.links.bulkPut(data.links); }
-    if (data.notes) { await db.notes.clear(); await db.notes.bulkPut(data.notes); }
-    if (data.payments) { await db.payments.clear(); await db.payments.bulkPut(data.payments); }
-    if (data.ideas) { await db.ideas.clear(); await db.ideas.bulkPut(data.ideas); }
-    if (data.credentials) { await db.credentials.clear(); await db.credentials.bulkPut(data.credentials); }
-    if (data.customModules) { await db.customModules.clear(); await db.customModules.bulkPut(data.customModules); }
-    if (data.habits) { await db.habits.clear(); await db.habits.bulkPut(data.habits); }
-    if (data.settings) await db.settings.put({ ...data.settings, id: 'default' });
-    // Reload settings into Zustand
-    await loadSettings();
-  }, [loadSettings]);
-
-  // Backward-compat: allows existing pages to do updateData({ websites: [...] }) etc.
-  const updateData = useCallback(async (partial: Record<string, any>): Promise<void> => {
-    const tableMap: Record<string, any> = {
-      websites: db.websites,
-      tasks: db.tasks,
-      repos: db.repos,
-      buildProjects: db.buildProjects,
-      links: db.links,
-      notes: db.notes,
-      payments: db.payments,
-      ideas: db.ideas,
-      credentials: db.credentials,
-      customModules: db.customModules,
-      habits: db.habits,
-    };
-
-    for (const [key, value] of Object.entries(partial)) {
-      if (key === 'userName' || key === 'userRole') {
-        await db.settings.update('default', { [key]: value });
-        await zustandUpdateSettings({ [key]: value } as any);
-      } else if (tableMap[key] && Array.isArray(value)) {
-        await tableMap[key].clear();
-        if (value.length > 0) await tableMap[key].bulkPut(value);
-      }
-    }
-    schedulePush();
-  }, [zustandUpdateSettings, schedulePush]);
 
   const value: DashboardContextValue = {
     websites, tasks, repos, buildProjects, links, notes, payments, ideas, credentials, customModules, habits,
