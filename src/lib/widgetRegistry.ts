@@ -34,19 +34,19 @@ export const widgetDefinitions: WidgetDefinition[] = [
 export function getDefaultLayouts(cols: number = 12): Array<{ i: string; x: number; y: number; w: number; h: number; minW?: number; minH?: number }> {
   // Hand-crafted optimal layout for beautiful tiling
   const hand: Record<string, { x: number; y: number; w: number; h: number }> = {
-    'stats': { x: 0, y: 0, w: 12, h: 4 },
-    'activity': { x: 0, y: 4, w: 7, h: 6 },
-    'quote': { x: 7, y: 4, w: 5, h: 6 },
-    'tasks-focus': { x: 0, y: 10, w: 5, h: 7 },
-    'deadlines': { x: 5, y: 10, w: 4, h: 7 },
-    'habits': { x: 9, y: 10, w: 3, h: 7 },
-    'finance': { x: 0, y: 17, w: 5, h: 6 },
-    'ideas': { x: 5, y: 17, w: 4, h: 6 },
-    'notes-preview': { x: 9, y: 17, w: 3, h: 6 },
-    'platforms': { x: 0, y: 23, w: 5, h: 5 },
-    'quick-links': { x: 5, y: 23, w: 4, h: 5 },
-    'websites-summary': { x: 9, y: 23, w: 3, h: 5 },
-    'calendar-mini': { x: 8, y: 4, w: 4, h: 5 },
+    'stats': { x: 0, y: 0, w: 12, h: 3 },
+    'activity': { x: 0, y: 3, w: 7, h: 7 },
+    'quote': { x: 7, y: 3, w: 5, h: 7 },
+    'tasks-focus': { x: 0, y: 10, w: 5, h: 8 },
+    'deadlines': { x: 5, y: 10, w: 4, h: 8 },
+    'habits': { x: 9, y: 10, w: 3, h: 8 },
+    'finance': { x: 0, y: 18, w: 5, h: 7 },
+    'ideas': { x: 5, y: 18, w: 4, h: 7 },
+    'notes-preview': { x: 9, y: 18, w: 3, h: 7 },
+    'platforms': { x: 0, y: 25, w: 5, h: 6 },
+    'quick-links': { x: 5, y: 25, w: 4, h: 6 },
+    'websites-summary': { x: 9, y: 25, w: 3, h: 6 },
+    'calendar-mini': { x: 0, y: 31, w: 5, h: 6 },
   };
 
   return widgetDefinitions.map(def => {
@@ -60,8 +60,8 @@ export function getDefaultLayouts(cols: number = 12): Array<{ i: string; x: numb
   });
 }
 
-const LAYOUT_KEY = 'mc-grid-layout-v9';
-const VISIBILITY_KEY = 'mc-widget-visibility-v9';
+const LAYOUT_KEY = 'mc-grid-layout-v10';
+const VISIBILITY_KEY = 'mc-widget-visibility-v10';
 
 export function loadSavedLayout() {
   try { const raw = localStorage.getItem(LAYOUT_KEY); if (raw) return JSON.parse(raw); } catch { }
