@@ -300,14 +300,14 @@ function KanbanCard({
             )}
           </div>
           {/* Actions */}
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
             <button onClick={e => { e.stopPropagation(); onEdit(); }}
-              className="p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
-              <Edit2 size={11} />
+              className="p-1.5 sm:p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
+              <Edit2 size={12} />
             </button>
             <button onClick={e => { e.stopPropagation(); onDelete(); }}
-              className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-              <Trash2 size={11} />
+              className="p-1.5 sm:p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors touch-manipulation">
+              <Trash2 size={12} />
             </button>
           </div>
         </div>
@@ -401,7 +401,7 @@ function KanbanColumn({
       onDragOver={handleDragOver}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      className={`flex-1 min-w-[260px] max-w-[320px] flex flex-col rounded-2xl transition-all duration-200 ${dragOver ? "ring-2 ring-inset ring-primary/40 bg-primary/5" : ""}`}>
+      className={`flex-1 min-w-[240px] sm:min-w-[260px] max-w-[320px] flex flex-col rounded-2xl transition-all duration-200 snap-start ${dragOver ? "ring-2 ring-inset ring-primary/40 bg-primary/5" : ""}`}>
 
       {/* Column header */}
       <div className={`flex items-center justify-between px-4 py-3.5 rounded-t-2xl bg-gradient-to-r ${status.bg}`}>
@@ -528,12 +528,12 @@ function ListRow({ task, onEdit, onDelete, onToggle, onToggleSub, index }: {
         </span>
 
         {/* Actions */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={onEdit} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
-            <Edit2 size={12} />
+        <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+          <button onClick={onEdit} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
+            <Edit2 size={14} />
           </button>
-          <button onClick={onDelete} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-            <Trash2 size={12} />
+          <button onClick={onDelete} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors touch-manipulation">
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
@@ -564,7 +564,8 @@ function ListRow({ task, onEdit, onDelete, onToggle, onToggleSub, index }: {
 export default function TasksPage() {
   const { tasks, addItem, updateItem, deleteItem } = useDashboard();
 
-  const [view, setView] = useState<"kanban" | "list">("kanban");
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [view, setView] = useState<"kanban" | "list">(isMobile ? "list" : "kanban");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -691,8 +692,8 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* ── Stats bar ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+      {/* ── Stats bar — horizontally scrollable on mobile ── */}
+      <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible">
         {[
           { label: "Total", value: stats.total, color: "text-foreground", bg: "bg-secondary/60" },
           { label: "Open", value: stats.open, color: "text-indigo-400", bg: "bg-indigo-500/10" },
@@ -702,9 +703,9 @@ export default function TasksPage() {
           { label: "Overdue", value: stats.overdue, color: "text-red-400 font-bold", bg: "bg-red-500/15" },
           { label: "Critical", value: stats.critical, color: "text-orange-400 font-bold", bg: "bg-orange-500/10" },
         ].map(s => (
-          <div key={s.label} className={`${s.bg} rounded-xl p-2.5 text-center`}>
-            <div className={`text-xl font-extrabold ${s.color}`}>{s.value}</div>
-            <div className="text-[10px] text-muted-foreground font-medium">{s.label}</div>
+          <div key={s.label} className={`${s.bg} rounded-xl p-2.5 text-center min-w-[72px] flex-shrink-0 sm:flex-shrink sm:min-w-0`}>
+            <div className={`text-lg sm:text-xl font-extrabold ${s.color}`}>{s.value}</div>
+            <div className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">{s.label}</div>
           </div>
         ))}
       </div>
@@ -737,67 +738,70 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* ── Toolbar ── */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <div className="flex items-center gap-2 bg-secondary rounded-xl px-3 py-2 flex-1 min-w-[180px] max-w-xs">
-          <Search size={13} className="text-muted-foreground shrink-0" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search tasks..."
-            className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none flex-1 min-w-0" />
-          {search && <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground"><X size={12} /></button>}
-        </div>
-
-        {/* Status filter */}
-        <div className="flex items-center gap-1 bg-secondary rounded-xl p-1">
-          {["all", ...STATUSES.map(s => s.id)].map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)}
-              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold capitalize transition-all ${filterStatus === s ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {s === "all" ? `All (${tasks.length})` : getStatus(s).label}
+      {/* ── Toolbar — scrollable on mobile ── */}
+      <div className="space-y-2">
+        {/* Search + view toggle row */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-secondary rounded-xl px-3 py-2 flex-1 min-w-0">
+            <Search size={13} className="text-muted-foreground shrink-0" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search tasks..."
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none flex-1 min-w-0" />
+            {search && <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground touch-manipulation"><X size={12} /></button>}
+          </div>
+          <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 shrink-0">
+            <button onClick={() => setView("kanban")}
+              className={`p-1.5 rounded-lg transition-all touch-manipulation ${view === "kanban" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              title="Kanban Board">
+              <LayoutGrid size={14} />
             </button>
-          ))}
+            <button onClick={() => setView("list")}
+              className={`p-1.5 rounded-lg transition-all touch-manipulation ${view === "list" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              title="List View">
+              <List size={14} />
+            </button>
+          </div>
         </div>
 
-        {/* Priority filter */}
-        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
-          className="px-3 py-1.5 rounded-xl bg-secondary text-foreground text-xs font-semibold outline-none appearance-none cursor-pointer">
-          <option value="all">All priorities</option>
-          {PRIORITIES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
+        {/* Filters row — horizontally scrollable on mobile */}
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+          {/* Status filter */}
+          <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 shrink-0">
+            {["all", ...STATUSES.map(s => s.id)].map(s => (
+              <button key={s} onClick={() => setFilterStatus(s)}
+                className={`px-2 sm:px-2.5 py-1.5 rounded-lg text-[11px] font-semibold capitalize transition-all whitespace-nowrap touch-manipulation ${filterStatus === s ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                {s === "all" ? `All` : getStatus(s).label}
+              </button>
+            ))}
+          </div>
 
-        {/* Category filter */}
-        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-          className="px-3 py-1.5 rounded-xl bg-secondary text-foreground text-xs font-semibold outline-none appearance-none cursor-pointer">
-          <option value="all">All categories</option>
-          {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+          {/* Priority filter */}
+          <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
+            className="px-3 py-1.5 rounded-xl bg-secondary text-foreground text-xs font-semibold outline-none appearance-none cursor-pointer shrink-0 touch-manipulation">
+            <option value="all">Priority</option>
+            {PRIORITIES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
 
-        {/* Sort */}
-        <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-          className="px-3 py-1.5 rounded-xl bg-secondary text-foreground text-xs font-semibold outline-none appearance-none cursor-pointer">
-          <option value="priority">Sort: Priority</option>
-          <option value="dueDate">Sort: Due Date</option>
-          <option value="created">Sort: Created</option>
-        </select>
+          {/* Category filter */}
+          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+            className="px-3 py-1.5 rounded-xl bg-secondary text-foreground text-xs font-semibold outline-none appearance-none cursor-pointer shrink-0 touch-manipulation">
+            <option value="all">Category</option>
+            {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
 
-        {/* View toggle */}
-        <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 ml-auto">
-          <button onClick={() => setView("kanban")}
-            className={`p-1.5 rounded-lg transition-all ${view === "kanban" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            title="Kanban Board">
-            <LayoutGrid size={14} />
-          </button>
-          <button onClick={() => setView("list")}
-            className={`p-1.5 rounded-lg transition-all ${view === "list" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            title="List View">
-            <List size={14} />
-          </button>
+          {/* Sort */}
+          <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
+            className="px-3 py-1.5 rounded-xl bg-secondary text-foreground text-xs font-semibold outline-none appearance-none cursor-pointer shrink-0 touch-manipulation">
+            <option value="priority">Priority</option>
+            <option value="dueDate">Due Date</option>
+            <option value="created">Created</option>
+          </select>
         </div>
       </div>
 
       {/* ── Kanban Board ── */}
       {view === "kanban" && (
-        <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: 400 }}>
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" style={{ minHeight: 400 }}>
           {STATUSES.map(status => (
             <KanbanColumn
               key={status.id}
