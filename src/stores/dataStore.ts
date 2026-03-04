@@ -11,6 +11,7 @@ import type {
     UserSettings, WidgetLayout,
 } from '@/lib/db';
 import { isSupabaseConnected, pushToSupabase } from '@/lib/supabase';
+import { isDuplicate, deduplicateItems } from '@/lib/dedup';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,11 @@ export const useDataStore = create<DataState>((set, _get) => ({
         const id = genId();
         const tableRef = getTable(table);
         if (!tableRef) throw new Error(`Unknown table: ${table}`);
+        // ─── Duplicate check ───────────────────────────────────────────────
+        if (await isDuplicate(table, item)) {
+            console.warn(`⚠️ Duplicate detected in "${table}", skipping:`, item);
+            return '';
+        }
         await tableRef.put({ ...item, id });
         schedulePush();
         return id;
@@ -118,7 +124,16 @@ export const useDataStore = create<DataState>((set, _get) => ({
     bulkAddItems: async <T extends { id: string }>(table: string, items: Omit<T, 'id'>[]): Promise<void> => {
         const tableRef = getTable(table);
         if (!tableRef) throw new Error(`Unknown table: ${table}`);
-        const withIds = items.map(item => ({ ...item, id: genId() }));
+        // ─── Deduplicate before inserting ───────────────────────────────────
+        const unique = await deduplicateItems(table, items);
+        if (unique.length === 0) {
+            console.warn(`⚠️ All ${items.length} items in "${table}" are duplicates, skipping bulk add`);
+            return;
+        }
+        if (unique.length < items.length) {
+            console.log(`🧹 Dedup: filtered out ${items.length - unique.length} duplicate(s) from "${table}" bulk add`);
+        }
+        const withIds = unique.map(item => ({ ...item, id: genId() }));
         await tableRef.bulkPut(withIds);
         schedulePush();
     },

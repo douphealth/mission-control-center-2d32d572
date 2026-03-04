@@ -73,7 +73,11 @@ export default function HabitsPage() {
     const saveForm = async () => {
         if (!form.name.trim()) { toast.error("Name is required"); return; }
         if (editId) { await updateItem<HabitTracker>("habits", editId, form); toast.success("Habit updated"); }
-        else { await addItem<HabitTracker>("habits", form); toast.success("Habit created!"); }
+        else {
+            const newId = await addItem<HabitTracker>("habits", form);
+            if (newId) toast.success("Habit created!");
+            else { toast.error("Duplicate habit — already exists"); return; }
+        }
         setModalOpen(false);
     };
     const uf = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }));

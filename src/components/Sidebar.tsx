@@ -83,7 +83,7 @@ export default function Sidebar() {
 
   const handleAddModule = async (groupLabel: string) => {
     if (!newModName.trim()) return;
-    await addItem('customModules', {
+    const newId = await addItem('customModules', {
       name: newModName.trim(),
       icon: newModEmoji,
       description: '',
@@ -98,7 +98,8 @@ export default function Sidebar() {
       visible: true,
       color: '',
     });
-    toast.success(`"${newModName}" added!`);
+    if (newId) toast.success(`"${newModName}" added!`);
+    else toast.error(`"${newModName}" already exists`);
     setNewModName('');
     setNewModEmoji('📁');
     setAddingTo(null);

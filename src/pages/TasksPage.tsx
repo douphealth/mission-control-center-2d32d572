@@ -300,7 +300,7 @@ function KanbanCard({
             )}
           </div>
           {/* Actions */}
-        <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+          <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
             <button onClick={e => { e.stopPropagation(); onEdit(); }}
               className="p-1.5 sm:p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
               <Edit2 size={12} />
@@ -619,8 +619,9 @@ export default function TasksPage() {
       await updateItem<Task>("tasks", id, rest);
       toast.success("Task updated ✓");
     } else {
-      await addItem<Task>("tasks", { ...t, createdAt: today } as Omit<Task, "id">);
-      toast.success("Task created ✓");
+      const newId = await addItem<Task>("tasks", { ...t, createdAt: today } as Omit<Task, "id">);
+      if (newId) toast.success("Task created ✓");
+      else toast.error("Duplicate task — already exists");
     }
   }, [addItem, updateItem]);
 
@@ -658,9 +659,10 @@ export default function TasksPage() {
 
   const quickAddTask = useCallback(async () => {
     if (!quickAdd.trim()) return;
-    await addItem<Task>("tasks", { ...EMPTY, title: quickAdd.trim(), createdAt: today });
+    const newId = await addItem<Task>("tasks", { ...EMPTY, title: quickAdd.trim(), createdAt: today });
     setQuickAdd("");
-    toast.success("Task added ✓");
+    if (newId) toast.success("Task added ✓");
+    else toast.error("Duplicate task — already exists");
   }, [quickAdd, addItem]);
 
   const allCategories = useMemo(() => {
@@ -801,7 +803,7 @@ export default function TasksPage() {
 
       {/* ── Kanban Board ── */}
       {view === "kanban" && (
-      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" style={{ minHeight: 400 }}>
+        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" style={{ minHeight: 400 }}>
           {STATUSES.map(status => (
             <KanbanColumn
               key={status.id}

@@ -18,6 +18,7 @@ import {
   type TargetMeta,
   generateTemplate,
 } from '@/lib/importEngine';
+import { deduplicateItems } from '@/lib/dedup';
 
 // ─── Icon registry ──────────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ export default function BulkImportModal({ open, onClose }: { open: boolean; onCl
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [importCount, setImportCount] = useState(0);
   const [importProgress, setImportProgress] = useState(0);
+  const [skippedDupes, setSkippedDupes] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
@@ -90,6 +92,7 @@ export default function BulkImportModal({ open, onClose }: { open: boolean; onCl
     setExpandedItems(new Set());
     setImportCount(0);
     setImportProgress(0);
+    setSkippedDupes(0);
     setPasteMode(true);
   }, []);
 
@@ -110,19 +113,34 @@ export default function BulkImportModal({ open, onClose }: { open: boolean; onCl
         return;
       }
 
+      // ─── Deduplicate against existing data ─────────────────────────
+      let totalSkipped = 0;
+      for (const cat of importResult.categories) {
+        const unique = await deduplicateItems(cat.target, cat.items);
+        const dupeCount = cat.items.length - unique.length;
+        totalSkipped += dupeCount;
+        cat.items = unique;
+      }
+      importResult.totalItems = importResult.categories.reduce((s, c) => s + c.items.length, 0);
+      setSkippedDupes(totalSkipped);
+
       setResult(importResult);
       setPhase('review');
 
       if (importResult.totalItems > 0) {
         const bestCat = importResult.categories[0];
         const conf = bestCat?.confidence;
+        const dupeMsg = totalSkipped > 0 ? ` (${totalSkipped} duplicate(s) filtered out)` : '';
         if (conf === 'high') {
-          toast.success(`Detected ${importResult.totalItems} ${bestCat.meta.label} with high confidence!`);
+          toast.success(`Detected ${importResult.totalItems} ${bestCat.meta.label} with high confidence!${dupeMsg}`);
         } else if (conf === 'medium') {
-          toast(`Detected ${importResult.totalItems} items as ${bestCat.meta.label}. You can change the category below.`, { icon: '🔍' });
+          toast(`Detected ${importResult.totalItems} items as ${bestCat.meta.label}. You can change the category below.${dupeMsg}`, { icon: '🔍' });
         } else {
-          toast('Detection confidence is low. Please verify the category.', { icon: '⚠️' });
+          toast(`Detection confidence is low. Please verify the category.${dupeMsg}`, { icon: '⚠️' });
         }
+      } else if (totalSkipped > 0) {
+        toast(`All ${totalSkipped} items already exist in the database — nothing new to import.`, { icon: '🔄' });
+        setPhase('input');
       } else {
         toast.error('Data was parsed but no valid items could be created. Check your data format.');
         setPhase('input');
@@ -160,14 +178,18 @@ export default function BulkImportModal({ open, onClose }: { open: boolean; onCl
   }, [handleAnalyze]);
 
   // Re-analyze with a different target override
-  const handleRetarget = useCallback((newTarget: ImportTarget) => {
+  const handleRetarget = useCallback(async (newTarget: ImportTarget) => {
     if (!result) return;
     setOverrideTarget(newTarget);
     // Re-run normalization with the new target
     const { parsedData } = result;
     const fieldMap = autoMapFields(parsedData.sourceFields, newTarget);
-    const items = normalizeItems(parsedData.rows, newTarget, fieldMap);
+    const allItems = normalizeItems(parsedData.rows, newTarget, fieldMap);
     const meta = TARGET_META[newTarget];
+    // ─── Deduplicate against existing data ───────────────────────────
+    const items = await deduplicateItems(newTarget, allItems);
+    const dupeCount = allItems.length - items.length;
+    setSkippedDupes(dupeCount);
 
     setResult({
       ...result,
@@ -430,6 +452,21 @@ export default function BulkImportModal({ open, onClose }: { open: boolean; onCl
                       <div className="text-[10px] text-muted-foreground font-medium">Fields Found</div>
                     </div>
                   </div>
+
+                  {/* Dedup info banner */}
+                  {skippedDupes > 0 && (
+                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-500/8 border border-amber-500/15">
+                      <RefreshCw size={16} className="text-amber-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-card-foreground">
+                          {skippedDupes} duplicate{skippedDupes > 1 ? 's' : ''} filtered out
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          These items already exist in your database and won't be imported again.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Confidence + Category selector */}
                   <div className="flex items-center gap-3 flex-wrap">

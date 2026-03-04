@@ -6,6 +6,7 @@ import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useDataStore } from '@/stores/dataStore';
 import { isSupabaseConnected, pullFromSupabase } from '@/lib/supabase';
+import { deduplicateAll } from '@/lib/dedup';
 
 // Re-export types for convenience
 export type { Website, Task, GitHubRepo, BuildProject, LinkItem, Note, Payment, Idea, CredentialVault, CustomModule, HabitTracker, UserSettings, WidgetLayout };
@@ -191,6 +192,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         }
 
         await seedDefaults();
+        // ─── Deduplicate all tables after migration/seeding ──────────────────────
+        await deduplicateAll();
         await loadSettings();
 
         // Load dashboard layout into Zustand

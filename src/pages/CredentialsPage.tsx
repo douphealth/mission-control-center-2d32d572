@@ -114,7 +114,11 @@ export default function CredentialsPage() {
     const encApiKey = form.apiKey ? await encrypt(form.apiKey) : "";
     const encrypted = { ...form, password: encPassword, apiKey: encApiKey };
     if (editId) { await updateItem<CredentialVault>("credentials", editId, encrypted); toast.success("Credential updated"); }
-    else { await addItem<CredentialVault>("credentials", encrypted); toast.success("Credential added"); }
+    else {
+      const newId = await addItem<CredentialVault>("credentials", encrypted);
+      if (newId) toast.success("Credential added");
+      else { toast.error("Duplicate credential — already exists"); return; }
+    }
     setModalOpen(false);
   };
 
