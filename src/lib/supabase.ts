@@ -157,7 +157,50 @@ const TABLE_MAP: Array<{ local: any; remote: string }> = [
     { local: db.habits, remote: 'mc_habits' },
 ];
 
-// ─── Push local → Supabase ────────────────────────────────────────────────────
+// ─── Preview: count what will happen ──────────────────────────────────────────
+
+export interface SyncPreview {
+    push: { table: string; count: number }[];
+    pull: { table: string; newCount: number; updateCount: number }[];
+    totalPush: number;
+    totalPullNew: number;
+    totalPullUpdate: number;
+}
+
+export async function getSyncPreview(): Promise<SyncPreview | null> {
+    const client = getSupabase();
+    if (!client) return null;
+
+    const push: SyncPreview['push'] = [];
+    const pull: SyncPreview['pull'] = [];
+
+    for (const { local, remote } of TABLE_MAP) {
+        const localItems = await local.toArray();
+        push.push({ table: remote, count: localItems.length });
+
+        const { data } = await client.from(remote).select('id, data');
+        if (!data) { pull.push({ table: remote, newCount: 0, updateCount: 0 }); continue; }
+
+        const localIds = new Set(localItems.map((i: any) => i.id));
+        let newCount = 0;
+        let updateCount = 0;
+        for (const row of data) {
+            if (localIds.has(row.id)) updateCount++;
+            else newCount++;
+        }
+        pull.push({ table: remote, newCount, updateCount });
+    }
+
+    return {
+        push,
+        pull,
+        totalPush: push.reduce((s, p) => s + p.count, 0),
+        totalPullNew: pull.reduce((s, p) => s + p.newCount, 0),
+        totalPullUpdate: pull.reduce((s, p) => s + p.updateCount, 0),
+    };
+}
+
+// ─── Push local → Supabase (upsert, never deletes cloud data) ────────────────
 
 export async function pushToSupabase(): Promise<{ success: boolean; synced: number; error?: string }> {
     const client = getSupabase();
@@ -200,39 +243,72 @@ export async function pushToSupabase(): Promise<{ success: boolean; synced: numb
     }
 }
 
-// ─── Pull Supabase → local ────────────────────────────────────────────────────
+// ─── Pull Supabase → local (SMART MERGE — never deletes local data) ──────────
 
-export async function pullFromSupabase(): Promise<{ success: boolean; synced: number; error?: string }> {
+export async function pullFromSupabase(): Promise<{ success: boolean; synced: number; added: number; updated: number; error?: string }> {
     const client = getSupabase();
-    if (!client) return { success: false, synced: 0, error: 'Not connected' };
+    if (!client) return { success: false, synced: 0, added: 0, updated: 0, error: 'Not connected' };
 
-    let totalSynced = 0;
+    let totalAdded = 0;
+    let totalUpdated = 0;
 
     try {
         for (const { local, remote } of TABLE_MAP) {
-            const { data, error } = await client.from(remote).select('data');
+            const { data, error } = await client.from(remote).select('id, data');
             if (error) {
-                if (error.code === '42P01') continue; // Table doesn't exist yet
+                if (error.code === '42P01') continue;
                 throw new Error(`${remote}: ${error.message}`);
             }
             if (!data?.length) continue;
 
-            const items = data.map((row: any) => row.data);
-            await local.clear();
-            await local.bulkPut(items);
-            totalSynced += items.length;
+            // Get existing local IDs for smart merge
+            const localItems = await local.toArray();
+            const localMap = new Map(localItems.map((item: any) => [item.id, item]));
+
+            for (const row of data) {
+                const cloudItem = row.data;
+                if (!cloudItem || !cloudItem.id) continue;
+
+                if (localMap.has(cloudItem.id)) {
+                    // Update existing — cloud wins for conflicts
+                    await local.put(cloudItem);
+                    totalUpdated++;
+                } else {
+                    // New from cloud — add without touching existing local data
+                    await local.put(cloudItem);
+                    totalAdded++;
+                }
+            }
         }
 
-        // Pull settings
+        // Pull settings (merge, don't overwrite)
         const { data: settingsData } = await client.from('mc_settings').select('data').eq('id', 'default').single();
         if (settingsData?.data) {
             await db.settings.put({ ...settingsData.data, id: 'default' });
         }
 
-        return { success: true, synced: totalSynced };
+        // Log sync
+        await client.from('mc_sync_log').insert([{
+            direction: 'pull',
+            tables: TABLE_MAP.map(t => t.remote),
+        }]);
+
+        return { success: true, synced: totalAdded + totalUpdated, added: totalAdded, updated: totalUpdated };
     } catch (e: any) {
-        return { success: false, synced: totalSynced, error: e?.message };
+        return { success: false, synced: 0, added: 0, updated: 0, error: e?.message };
     }
+}
+
+// ─── Full two-way sync (merge both directions) ───────────────────────────────
+
+export async function fullSync(): Promise<{ success: boolean; pushed: number; pulled: number; error?: string }> {
+    const pushResult = await pushToSupabase();
+    if (!pushResult.success) return { success: false, pushed: 0, pulled: 0, error: `Push failed: ${pushResult.error}` };
+
+    const pullResult = await pullFromSupabase();
+    if (!pullResult.success) return { success: false, pushed: pushResult.synced, pulled: 0, error: `Pull failed: ${pullResult.error}` };
+
+    return { success: true, pushed: pushResult.synced, pulled: pullResult.synced };
 }
 
 // ─── Register callback for sync events ────────────────────────────────────────
