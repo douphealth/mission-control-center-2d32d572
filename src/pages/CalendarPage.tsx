@@ -244,6 +244,9 @@ function EventModal({ open, event, onClose, onSave, onDelete }: EventModalProps)
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground block mb-1">Notes / Description</label>
                 <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder="Optional details..."
+                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                  onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }}
+                  style={{ overflow: "hidden" }}
                   className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 resize-none placeholder:text-muted-foreground/50" />
               </div>
 

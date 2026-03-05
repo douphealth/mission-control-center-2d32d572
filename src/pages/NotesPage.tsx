@@ -162,6 +162,9 @@ export default function NotesPage() {
                 <textarea
                   value={selected.content}
                   onChange={e => updateNote("content", e.target.value)}
+                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                  onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }}
+                  style={{ overflow: "hidden" }}
                   className="flex-1 bg-transparent text-sm text-card-foreground outline-none resize-none leading-relaxed min-h-[300px]"
                   placeholder="Start writing..."
                 />

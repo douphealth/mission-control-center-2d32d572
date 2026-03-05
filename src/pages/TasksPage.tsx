@@ -133,12 +133,18 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 autoFocus rows={2}
                 value={form.title} onChange={e => uf("title", e.target.value)}
                 placeholder="Task title..."
+                ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }}
+                style={{ overflow: "hidden" }}
                 className="w-full text-lg font-semibold bg-transparent text-card-foreground outline-none placeholder:text-muted-foreground/40 resize-none border-b border-border/40 pb-2"
               />
 
               {/* Description */}
               <textarea rows={2} value={form.description} onChange={e => uf("description", e.target.value)}
                 placeholder="Description (optional)..."
+                ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }}
+                style={{ overflow: "hidden" }}
                 className="w-full px-3 py-2.5 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 resize-none placeholder:text-muted-foreground/50" />
 
               {/* Status + Priority row */}

@@ -102,12 +102,23 @@ export function FormInput({ value, onChange, placeholder, type = "text" }: { val
 }
 
 export function FormTextarea({ value, onChange, placeholder, rows = 3 }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const autoResize = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  };
+  useEffect(() => { autoResize(); }, [value]);
   return (
     <textarea
+      ref={ref}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onInput={autoResize}
       placeholder={placeholder}
       rows={rows}
+      style={{ overflow: "hidden" }}
       className="w-full px-3 py-2.5 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none placeholder:text-muted-foreground"
     />
   );
