@@ -1,5 +1,5 @@
 import { useDashboard } from "@/contexts/DashboardContext";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Plus, X, Calendar, Clock, Tag,
