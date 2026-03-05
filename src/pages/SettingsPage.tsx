@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   getSupabaseConfig, setSupabaseConfig, clearSupabaseConfig,
-  testSupabaseConnection, pushToSupabase, pullFromSupabase, fullSync,
+  testSupabaseConnection, pushToSupabase, pullFromSupabase,
   isSupabaseConnected, SUPABASE_SCHEMA_SQL, getLastSyncTime,
   type SyncPreview, getSyncPreview
 } from "@/lib/supabase";
@@ -22,7 +22,7 @@ const tabs = [
   { id: "profile", label: "Profile", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "google-calendar", label: "Google Calendar", icon: Calendar },
-  { id: "supabase", label: "Supabase Sync", icon: Cloud },
+  { id: "supabase", label: "Cloud Backup", icon: Cloud },
   { id: "security", label: "Security", icon: Shield },
   { id: "data", label: "Data", icon: Database },
   { id: "about", label: "About", icon: Info },
@@ -66,10 +66,10 @@ export default function SettingsPage() {
   const [sbConnected, setSbConnected] = useState(isSupabaseConnected());
   const [sbTesting, setSbTesting] = useState(false);
   const [sbTestResult, setSbTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [sbSyncing, setSbSyncing] = useState<null | 'push' | 'pull' | 'full'>(null);
+  const [sbSyncing, setSbSyncing] = useState<null | 'push' | 'pull'>(null);
   const [sbLastSync, setSbLastSync] = useState<string | null>(null);
   const [showSchema, setShowSchema] = useState(false);
-  const [syncConfirm, setSyncConfirm] = useState<null | 'push' | 'pull' | 'full'>(null);
+  const [syncConfirm, setSyncConfirm] = useState<null | 'push' | 'pull'>(null);
   const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
@@ -148,7 +148,7 @@ export default function SettingsPage() {
     toast.info("Supabase disconnected");
   };
 
-  const handleSyncAction = async (action: 'push' | 'pull' | 'full') => {
+  const handleSyncAction = async (action: 'push' | 'pull') => {
     // Load preview first for confirmation
     setLoadingPreview(true);
     setSyncConfirm(action);
@@ -157,7 +157,7 @@ export default function SettingsPage() {
     setLoadingPreview(false);
   };
 
-  const executeSyncAction = async (action: 'push' | 'pull' | 'full') => {
+  const executeSyncAction = async (action: 'push' | 'pull') => {
     setSyncConfirm(null);
     setSbSyncing(action);
 
@@ -165,30 +165,20 @@ export default function SettingsPage() {
       const result = await pushToSupabase();
       setSbSyncing(null);
       if (result.success) {
-        toast.success(`✅ Pushed ${result.synced} items to cloud`);
+        toast.success(`✅ Saved ${result.synced} items to cloud`);
         setSbLastSync(new Date().toISOString());
       } else {
-        toast.error(`Push failed: ${result.error}`);
+        toast.error(`Save failed: ${result.error}`);
       }
-    } else if (action === 'pull') {
+    } else {
       const result = await pullFromSupabase();
       setSbSyncing(null);
       if (result.success) {
-        toast.success(`✅ Merged ${result.added} new + ${result.updated} updated items from cloud`);
+        toast.success(`✅ Restored ${result.added} new + ${result.updated} updated items from cloud`);
         setSbLastSync(new Date().toISOString());
         setTimeout(() => window.location.reload(), 1200);
       } else {
-        toast.error(`Pull failed: ${result.error}`);
-      }
-    } else {
-      const result = await fullSync();
-      setSbSyncing(null);
-      if (result.success) {
-        toast.success(`✅ Full sync complete — pushed ${result.pushed}, pulled ${result.pulled} items`);
-        setSbLastSync(new Date().toISOString());
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        toast.error(`Sync failed: ${result.error}`);
+        toast.error(`Restore failed: ${result.error}`);
       }
     }
   };
@@ -564,36 +554,54 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Sync actions */}
+                {/* Cloud Backup Actions */}
                 {sbConnected && (
                   <div className="card-elevated p-6 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h2 className="font-semibold text-lg">Cloud Sync</h2>
-                      <span className="text-[10px] font-medium text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-lg">Safe Merge Active</span>
+                      <h2 className="font-semibold text-lg">Cloud Backup</h2>
+                      <span className="text-[10px] font-medium text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-lg flex items-center gap-1">
+                        <CheckCircle2 size={10} /> Auto-Save Active
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                      <button onClick={() => handleSyncAction('full')} disabled={!!sbSyncing}
-                        className="flex items-center gap-4 p-4 rounded-2xl bg-primary/5 border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 transition-all text-left group">
-                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0 transition-transform group-hover:scale-105">
-                          {sbSyncing === 'full' ? <Loader2 size={20} className="text-primary-foreground animate-spin" /> : <RefreshCw size={20} className="text-primary-foreground" />}
+                    <div className="flex items-start gap-2 p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/15">
+                      <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        <strong className="text-foreground">Auto-save is always on.</strong> Every change you make is automatically backed up to the cloud within seconds. No manual action needed.
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Save to Cloud — push only */}
+                      <button onClick={() => handleSyncAction('push')} disabled={!!sbSyncing}
+                        className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 transition-all text-left group">
+                        <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0 transition-transform group-hover:scale-105">
+                          {sbSyncing === 'push' ? <Loader2 size={18} className="text-primary-foreground animate-spin" /> : <ArrowUp size={18} className="text-primary-foreground" />}
                         </div>
                         <div className="flex-1">
-                          <div className="text-base font-bold text-foreground flex items-center gap-2">
-                            Sync Data
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">Safely synchronizes all your data with the cloud. Your local edits are prioritized and safely merged.</div>
+                          <div className="text-sm font-bold text-foreground">Save to Cloud</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">Push all local data to the cloud now</div>
                         </div>
-                        <ChevronRight size={20} className="text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
+                      </button>
+
+                      {/* Restore from Cloud — pull only, with warning */}
+                      <button onClick={() => handleSyncAction('pull')} disabled={!!sbSyncing}
+                        className="flex items-center gap-3 p-4 rounded-2xl bg-secondary/30 border-2 border-border/30 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all text-left group">
+                        <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                          {sbSyncing === 'pull' ? <Loader2 size={18} className="text-foreground animate-spin" /> : <ArrowDown size={18} className="text-muted-foreground" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-bold text-foreground">Restore from Cloud</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">Overwrites local data with cloud backup</div>
+                        </div>
                       </button>
                     </div>
 
-                    <div className="flex items-start gap-2 p-3.5 rounded-xl bg-secondary/40 border border-border/20">
-                      <Shield size={16} className="text-primary shrink-0 mt-0.5" />
-                      <div className="text-xs text-muted-foreground leading-relaxed">
-                        <strong className="text-foreground">Zero data loss guarantee:</strong> Synchronization uses smart enterprise-grade merging. Your local data is safely pushed first, then seamlessly combined with any new remote changes.
+                    {sbLastSync && (
+                      <div className="text-[11px] text-muted-foreground text-center">
+                        Last manual save: {new Date(sbLastSync).toLocaleString()}
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
 
@@ -616,14 +624,16 @@ export default function SettingsPage() {
                       >
                         <div className="p-5 sm:p-6 space-y-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                              <RefreshCw size={18} className="text-primary" />
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${syncConfirm === 'pull' ? 'bg-amber-500/10' : 'bg-primary/10'}`}>
+                              {syncConfirm === 'push' ? <ArrowUp size={18} className="text-primary" /> : <ArrowDown size={18} className="text-amber-500" />}
                             </div>
                             <div>
                               <h3 className="font-bold text-foreground">
-                                Sync Data Cloud
+                                {syncConfirm === 'push' ? 'Save to Cloud' : 'Restore from Cloud'}
                               </h3>
-                              <p className="text-xs text-muted-foreground">Review the sync sequence</p>
+                              <p className="text-xs text-muted-foreground">
+                                {syncConfirm === 'push' ? 'Back up your local data to the cloud' : 'Download cloud data to this device'}
+                              </p>
                             </div>
                           </div>
 
@@ -633,26 +643,38 @@ export default function SettingsPage() {
                             </div>
                           ) : syncPreview && (
                             <div className="space-y-3">
-                              <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1">
-                                <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                                  <ArrowUp size={12} /> Local to Cloud
-                                </div>
-                                <div className="text-[11px] text-muted-foreground">
-                                  Your current data will be safely pushed to the cloud.
-                                </div>
-                              </div>
-                              <div className="p-3 rounded-xl bg-secondary/60 border border-border/20 space-y-1">
-                                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                  <ArrowDown size={12} /> Cloud to Local
-                                </div>
-                                <div className="text-[11px] text-muted-foreground">
-                                  Any new items created remotely ({syncPreview.totalPullNew} new found) will be downloaded to this device safely.
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 p-2 rounded-lg">
-                                <CheckCircle2 size={12} className="shrink-0" />
-                                Safe Merge: Local changes are never deleted or overwritten
-                              </div>
+                              {syncConfirm === 'push' ? (
+                                <>
+                                  <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1">
+                                    <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                                      <ArrowUp size={12} /> {syncPreview.totalPush} items will be saved
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground">
+                                      Your current local data will be safely backed up to the cloud.
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 p-2 rounded-lg">
+                                    <CheckCircle2 size={12} className="shrink-0" />
+                                    Safe operation — cloud data is overwritten with your latest local data.
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                                    <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                      <AlertTriangle size={12} /> Warning: This will overwrite your local data
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground">
+                                      All your current local edits will be replaced with the cloud backup. Use this only if you want to restore a previous version.
+                                    </div>
+                                  </div>
+                                  <div className="p-3 rounded-xl bg-secondary/60 border border-border/20 space-y-1">
+                                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      <ArrowDown size={12} /> {syncPreview.totalPullNew} new + {syncPreview.totalPullUpdate} existing items from cloud
+                                    </div>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -662,12 +684,12 @@ export default function SettingsPage() {
                             Cancel
                           </button>
                           <button
-                            onClick={() => executeSyncAction('full')}
+                            onClick={() => executeSyncAction(syncConfirm)}
                             disabled={loadingPreview}
-                            className="btn-primary text-sm flex-1 gap-2"
+                            className={`text-sm flex-1 gap-2 ${syncConfirm === 'pull' ? 'btn-primary bg-amber-500 hover:bg-amber-600 border-amber-500' : 'btn-primary'}`}
                           >
-                            <RefreshCw size={14} />
-                            Start Sync
+                            {syncConfirm === 'push' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                            {syncConfirm === 'push' ? 'Save Now' : 'Restore Now'}
                           </button>
                         </div>
                       </motion.div>

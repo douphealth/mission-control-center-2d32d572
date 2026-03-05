@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useDataStore } from '@/stores/dataStore';
-import { isSupabaseConnected, pullFromSupabase } from '@/lib/supabase';
+import { isSupabaseConnected } from '@/lib/supabase';
 import { deduplicateAll } from '@/lib/dedup';
 
 // Re-export types for convenience
@@ -182,14 +182,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         await migrateFromLocalStorage();
 
-        // Auto-pull from Supabase BEFORE seeding defaults
-        if (isSupabaseConnected()) {
-          console.log('☁️ Auto-pulling from Supabase...');
-          const result = await pullFromSupabase();
-          if (result.success && result.synced > 0) {
-            console.log(`☁️ Pulled ${result.synced} items from Supabase`);
-          }
-        }
+        // NOTE: We do NOT auto-pull from Supabase on init.
+        // Auto-push (in dataStore) keeps the cloud in sync as a backup.
+        // Restoring from cloud is an explicit user action only.
 
         await seedDefaults();
         // ─── Deduplicate all tables after migration/seeding ──────────────────────
