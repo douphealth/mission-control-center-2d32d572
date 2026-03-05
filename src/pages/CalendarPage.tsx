@@ -421,9 +421,20 @@ export default function CalendarPage() {
   // ── CRUD ─────────────────────────────────────────────────────────────────────
   const saveEvent = useCallback((ev: Omit<CalEvent, "id"> & { id?: string }) => {
     setEvents(prev => {
-      const next = ev.id
-        ? prev.map(e => e.id === ev.id ? { ...e, ...ev } as CalEvent : e)
-        : [...prev, { ...ev, id: `evt-${Date.now()}` }] as CalEvent[];
+      let next: CalEvent[];
+      if (ev.id) {
+        const exists = prev.some(e => e.id === ev.id);
+        if (exists) {
+          // Update existing custom event
+          next = prev.map(e => e.id === ev.id ? { ...e, ...ev } as CalEvent : e);
+        } else {
+          // Event not in custom events (e.g. task-synced) — add as overlay
+          // This persists time/date overrides; allEvents dedup prefers this over the derived task event
+          next = [...prev, { ...ev, id: ev.id } as CalEvent];
+        }
+      } else {
+        next = [...prev, { ...ev, id: `evt-${Date.now()}` } as CalEvent];
+      }
       saveEvents(next);
       return next;
     });
