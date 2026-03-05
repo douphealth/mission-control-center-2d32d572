@@ -304,8 +304,8 @@ export default function SettingsPage() {
               <motion.div key="google-calendar" {...fadeIn} className="space-y-4">
                 {/* Status Banner */}
                 <div className={`rounded-2xl border p-4 flex items-center gap-3 ${gcal.connected
-                    ? "bg-emerald-500/5 border-emerald-500/20"
-                    : "bg-blue-500/5 border-blue-500/20"
+                  ? "bg-emerald-500/5 border-emerald-500/20"
+                  : "bg-blue-500/5 border-blue-500/20"
                   }`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${gcal.connected ? "bg-emerald-500/15" : "bg-blue-500/15"
                     }`}>
@@ -313,8 +313,8 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className={`text-sm font-semibold ${gcal.connected
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-blue-600 dark:text-blue-400"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-blue-600 dark:text-blue-400"
                       }`}>
                       {gcal.connected ? "🟢 Google Calendar Connected" : "⚡ Google Calendar Not Connected"}
                     </div>
@@ -414,8 +414,8 @@ export default function SettingsPage() {
                             key={cal.id}
                             onClick={() => gcal.toggleCalendar(cal.id)}
                             className={`flex items-center gap-3 w-full p-3 rounded-xl border transition-all text-left ${enabled
-                                ? "border-primary/30 bg-primary/5"
-                                : "border-border/30 hover:border-border/60 hover:bg-secondary/30"
+                              ? "border-primary/30 bg-primary/5"
+                              : "border-border/30 hover:border-border/60 hover:bg-secondary/30"
                               }`}
                           >
                             <div className="w-4 h-4 rounded-md flex items-center justify-center shrink-0"
@@ -568,58 +568,30 @@ export default function SettingsPage() {
                 {sbConnected && (
                   <div className="card-elevated p-6 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h2 className="font-semibold text-lg">Sync Actions</h2>
-                      <span className="text-[10px] font-medium text-muted-foreground/50 bg-secondary px-2 py-1 rounded-lg">Smart Merge — never loses data</span>
+                      <h2 className="font-semibold text-lg">Cloud Sync</h2>
+                      <span className="text-[10px] font-medium text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-lg">Safe Merge Active</span>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3">
-                      {/* Full Sync — recommended */}
                       <button onClick={() => handleSyncAction('full')} disabled={!!sbSyncing}
                         className="flex items-center gap-4 p-4 rounded-2xl bg-primary/5 border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 transition-all text-left group">
-                        <div className="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                          {sbSyncing === 'full' ? <Loader2 size={18} className="text-primary animate-spin" /> : <RefreshCw size={18} className="text-primary" />}
+                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0 transition-transform group-hover:scale-105">
+                          {sbSyncing === 'full' ? <Loader2 size={20} className="text-primary-foreground animate-spin" /> : <RefreshCw size={20} className="text-primary-foreground" />}
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-bold text-foreground flex items-center gap-2">
-                            Full Sync (Recommended)
-                            <span className="text-[9px] font-semibold bg-primary/15 text-primary px-2 py-0.5 rounded-full">SAFE</span>
+                          <div className="text-base font-bold text-foreground flex items-center gap-2">
+                            Sync Data
                           </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">Push local → cloud, then merge cloud → local. Both sides get all data.</div>
+                          <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">Safely synchronizes all your data with the cloud. Your local edits are prioritized and safely merged.</div>
                         </div>
-                        <ChevronRight size={16} className="text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
+                        <ChevronRight size={20} className="text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
                       </button>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Push */}
-                        <button onClick={() => handleSyncAction('push')} disabled={!!sbSyncing}
-                          className="flex items-center gap-3 p-4 rounded-2xl bg-secondary/50 border border-border/30 hover:border-primary/30 hover:bg-secondary/80 transition-all text-left group">
-                          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                            {sbSyncing === 'push' ? <Loader2 size={16} className="text-primary animate-spin" /> : <ArrowUp size={16} className="text-primary" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-foreground">Push to Cloud</div>
-                            <div className="text-[11px] text-muted-foreground mt-0.5">Upload local data to Supabase (upsert, no cloud data deleted)</div>
-                          </div>
-                        </button>
-
-                        {/* Pull */}
-                        <button onClick={() => handleSyncAction('pull')} disabled={!!sbSyncing}
-                          className="flex items-center gap-3 p-4 rounded-2xl bg-secondary/50 border border-border/30 hover:border-primary/30 hover:bg-secondary/80 transition-all text-left group">
-                          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                            {sbSyncing === 'pull' ? <Loader2 size={16} className="text-primary animate-spin" /> : <ArrowDown size={16} className="text-primary" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-foreground">Pull from Cloud</div>
-                            <div className="text-[11px] text-muted-foreground mt-0.5">Merge cloud data into local — adds new items, updates existing</div>
-                          </div>
-                        </button>
-                      </div>
                     </div>
 
-                    <div className="flex items-start gap-2 p-3 rounded-xl bg-secondary/40 border border-border/20">
-                      <Shield size={14} className="text-primary shrink-0 mt-0.5" />
-                      <div className="text-[11px] text-muted-foreground leading-relaxed">
-                        <strong className="text-foreground">Zero data loss guarantee:</strong> All sync operations use smart merge (upsert). Your local data is never deleted — cloud items are added or updated alongside your existing records.
+                    <div className="flex items-start gap-2 p-3.5 rounded-xl bg-secondary/40 border border-border/20">
+                      <Shield size={16} className="text-primary shrink-0 mt-0.5" />
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        <strong className="text-foreground">Zero data loss guarantee:</strong> Synchronization uses smart enterprise-grade merging. Your local data is safely pushed first, then seamlessly combined with any new remote changes.
                       </div>
                     </div>
                   </div>
@@ -645,15 +617,13 @@ export default function SettingsPage() {
                         <div className="p-5 sm:p-6 space-y-4">
                           <div className="flex items-center gap-3">
                             <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                              {syncConfirm === 'full' ? <RefreshCw size={18} className="text-primary" /> :
-                                syncConfirm === 'push' ? <ArrowUp size={18} className="text-primary" /> :
-                                  <ArrowDown size={18} className="text-primary" />}
+                              <RefreshCw size={18} className="text-primary" />
                             </div>
                             <div>
                               <h3 className="font-bold text-foreground">
-                                {syncConfirm === 'full' ? 'Full Sync' : syncConfirm === 'push' ? 'Push to Cloud' : 'Pull from Cloud'}
+                                Sync Data Cloud
                               </h3>
-                              <p className="text-xs text-muted-foreground">Review what will happen before proceeding</p>
+                              <p className="text-xs text-muted-foreground">Review the sync sequence</p>
                             </div>
                           </div>
 
@@ -663,33 +633,25 @@ export default function SettingsPage() {
                             </div>
                           ) : syncPreview && (
                             <div className="space-y-3">
-                              {(syncConfirm === 'push' || syncConfirm === 'full') && (
-                                <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1">
-                                  <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                                    <ArrowUp size={12} /> Push: {syncPreview.totalPush} items → cloud
-                                  </div>
-                                  <div className="text-[11px] text-muted-foreground">
-                                    {syncPreview.push.filter(p => p.count > 0).map(p =>
-                                      `${p.table.replace('mc_', '')}: ${p.count}`
-                                    ).join(' · ') || 'No local data to push'}
-                                  </div>
+                              <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1">
+                                <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                                  <ArrowUp size={12} /> Local to Cloud
                                 </div>
-                              )}
-                              {(syncConfirm === 'pull' || syncConfirm === 'full') && (
-                                <div className="p-3 rounded-xl bg-secondary/60 border border-border/20 space-y-1">
-                                  <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                    <ArrowDown size={12} /> Pull: {syncPreview.totalPullNew} new + {syncPreview.totalPullUpdate} updates
-                                  </div>
-                                  <div className="text-[11px] text-muted-foreground">
-                                    {syncPreview.pull.filter(p => p.newCount > 0 || p.updateCount > 0).map(p =>
-                                      `${p.table.replace('mc_', '')}: +${p.newCount} new, ${p.updateCount} upd`
-                                    ).join(' · ') || 'No cloud data to pull'}
-                                  </div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  Your current data will be safely pushed to the cloud.
                                 </div>
-                              )}
-                              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                <CheckCircle2 size={12} className="text-primary" />
-                                No data will be deleted from either side
+                              </div>
+                              <div className="p-3 rounded-xl bg-secondary/60 border border-border/20 space-y-1">
+                                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                  <ArrowDown size={12} /> Cloud to Local
+                                </div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  Any new items created remotely ({syncPreview.totalPullNew} new found) will be downloaded to this device safely.
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 p-2 rounded-lg">
+                                <CheckCircle2 size={12} className="shrink-0" />
+                                Safe Merge: Local changes are never deleted or overwritten
                               </div>
                             </div>
                           )}
@@ -700,12 +662,12 @@ export default function SettingsPage() {
                             Cancel
                           </button>
                           <button
-                            onClick={() => executeSyncAction(syncConfirm)}
+                            onClick={() => executeSyncAction('full')}
                             disabled={loadingPreview}
                             className="btn-primary text-sm flex-1 gap-2"
                           >
-                            {syncConfirm === 'full' ? <RefreshCw size={14} /> : syncConfirm === 'push' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                            {syncConfirm === 'full' ? 'Sync Now' : syncConfirm === 'push' ? 'Push Now' : 'Pull Now'}
+                            <RefreshCw size={14} />
+                            Start Sync
                           </button>
                         </div>
                       </motion.div>

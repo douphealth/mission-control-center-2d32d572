@@ -106,18 +106,20 @@ function EventModal({ open, event, onClose, onSave, onDelete }: EventModalProps)
   const [desc, setDesc] = useState(event?.description || "");
   const [allDay, setAllDay] = useState(event?.allDay ?? false);
 
-  // Reset when event prop changes — use useEffect instead of useMemo for side effects
-  useMemo(() => {
-    setTitle(event?.title || "");
-    setDate(event?.date || today);
-    setEndDate(event?.endDate || "");
-    setStart(event?.startTime || "09:00");
-    setEnd(event?.endTime || "10:00");
-    setColor(event?.color || "#3b82f6");
-    setCat(event?.category || "Work");
-    setDesc(event?.description || "");
-    setAllDay(event?.allDay ?? false);
-  }, [event?.id, open]);
+  // Reset when event prop changes using useEffect for side effects
+  useEffect(() => {
+    if (open) {
+      setTitle(event?.title || "");
+      setDate(event?.date || today);
+      setEndDate(event?.endDate || "");
+      setStart(event?.startTime || "09:00");
+      setEnd(event?.endTime || "10:00");
+      setColor(event?.color || "#3b82f6");
+      setCat(event?.category || "Work");
+      setDesc(event?.description || "");
+      setAllDay(event?.allDay ?? false);
+    }
+  }, [event, open, today]);
 
   const save = () => {
     if (!title.trim()) { toast.error("Title is required"); return; }
@@ -434,7 +436,7 @@ export default function CalendarPage() {
   }, []);
 
   const openNewEvent = (date: string) => {
-    setModal({ open: true, event: { date, allDay: true } });
+    setModal({ open: true, event: { date, allDay: false, startTime: "09:00", endTime: "10:00" } });
   };
 
   const openEditEvent = (ev: CalEvent) => {
