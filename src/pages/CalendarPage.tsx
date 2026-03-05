@@ -104,19 +104,19 @@ function EventModal({ open, event, onClose, onSave, onDelete }: EventModalProps)
   const [color, setColor] = useState(event?.color || "#3b82f6");
   const [cat, setCat] = useState(event?.category || "Work");
   const [desc, setDesc] = useState(event?.description || "");
-  const [allDay, setAllDay] = useState(event?.allDay !== false);
+  const [allDay, setAllDay] = useState(event?.allDay ?? false);
 
-  // Reset when event prop changes
+  // Reset when event prop changes — use useEffect instead of useMemo for side effects
   useMemo(() => {
     setTitle(event?.title || "");
     setDate(event?.date || today);
     setEndDate(event?.endDate || "");
-    setStart(event?.startTime || "");
-    setEnd(event?.endTime || "");
+    setStart(event?.startTime || "09:00");
+    setEnd(event?.endTime || "10:00");
     setColor(event?.color || "#3b82f6");
     setCat(event?.category || "Work");
     setDesc(event?.description || "");
-    setAllDay(event?.allDay !== false);
+    setAllDay(event?.allDay ?? false);
   }, [event?.id, open]);
 
   const save = () => {
