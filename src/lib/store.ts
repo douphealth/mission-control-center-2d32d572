@@ -31,6 +31,9 @@ export interface Task {
   subtasks: { id: string; title: string; done: boolean }[];
   createdAt: string;
   completedAt?: string;
+  startTime?: string;
+  endTime?: string;
+  allDay?: boolean;
 }
 
 export interface GitHubRepo {
@@ -244,7 +247,7 @@ export function loadData(): StoreData {
         credentials: parsed.credentials || defaults.credentials,
       };
     }
-  } catch {}
+  } catch { }
   const d = getDefaultData();
   saveData(d);
   return d;

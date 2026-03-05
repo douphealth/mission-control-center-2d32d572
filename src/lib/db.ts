@@ -41,6 +41,9 @@ export interface Task {
     tags?: string[];
     recurring?: boolean;
     recurringInterval?: string;
+    startTime?: string;   // HH:MM — calendar time support
+    endTime?: string;     // HH:MM — calendar time support
+    allDay?: boolean;     // defaults to true if not set
 }
 
 export interface GitHubRepo {

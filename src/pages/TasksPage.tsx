@@ -191,6 +191,32 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 </div>
               </div>
 
+              {/* Time — syncs to calendar */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => uf("allDay", !(form.allDay !== false))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${form.allDay !== false ? "bg-primary" : "bg-secondary"}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.allDay !== false ? "translate-x-5" : ""}`} />
+                  </button>
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">All day</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">Syncs to Calendar</span>
+                </div>
+                {form.allDay === false && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Start Time</label>
+                      <input type="time" value={form.startTime || "09:00"} onChange={e => uf("startTime", e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">End Time</label>
+                      <input type="time" value={form.endTime || "10:00"} onChange={e => uf("endTime", e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Linked project */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Linked Project</label>
@@ -361,6 +387,12 @@ function KanbanCard({
         <div className={`flex items-center gap-1 text-[10px] font-semibold ${overdue ? "text-red-400" : todayTask ? "text-amber-400" : "text-muted-foreground"}`}>
           <Calendar size={9} />
           {task.dueDate ? daysUntil(task.dueDate) : "No date"}
+          {task.allDay === false && task.startTime && (
+            <span className="ml-1 text-primary/70 font-medium">
+              <Clock size={8} className="inline -mt-0.5 mr-0.5" />
+              {task.startTime}{task.endTime ? `–${task.endTime}` : ""}
+            </span>
+          )}
         </div>
         {/* Drag handle hint */}
         <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />

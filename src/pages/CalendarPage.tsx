@@ -176,7 +176,6 @@ function EventModal({ open, event, onClose, onSave, onDelete }: EventModalProps)
                 onKeyDown={e => e.key === "Enter" && save()}
                 placeholder="Event title..."
                 className="w-full text-lg font-semibold bg-transparent text-card-foreground outline-none placeholder:text-muted-foreground/50 border-b border-border/40 pb-2"
-                readOnly={event?.isTask}
               />
 
               {/* Date row */}
@@ -251,9 +250,9 @@ function EventModal({ open, event, onClose, onSave, onDelete }: EventModalProps)
               </div>
 
               {event?.isTask && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-xl p-3">
-                  <CheckSquare size={12} className="text-primary" />
-                  This event is synced from your Task list. Edit the task directly to change the title.
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-emerald-500/10 border border-emerald-500/15 rounded-xl p-3">
+                  <CheckSquare size={12} className="text-emerald-500" />
+                  <span>Linked to Task — changes here will automatically sync to the Tasks page.</span>
                 </div>
               )}
             </div>
@@ -355,14 +354,18 @@ export default function CalendarPage() {
       taskId: t.id,
       priority: t.priority,
       status: t.status,
-      allDay: true,
+      startTime: t.startTime,
+      endTime: t.endTime,
+      allDay: t.allDay !== false, // default true for backward compat
     })),
     [tasks]);
 
   const allEvents = useMemo(() => {
-    // Dedupe: custom events that are also task-linked skip non-task ones
-    const ids = new Set(events.map(e => e.id));
-    return [...events, ...taskEvents.filter(te => !ids.has(te.id)), ...googleEvents];
+    // Custom events + task events (no overlays) + Google events
+    const taskIds = new Set(taskEvents.map(te => te.id));
+    // Remove any stale task overlays from custom events
+    const cleanEvents = events.filter(e => !taskIds.has(e.id));
+    return [...cleanEvents, ...taskEvents, ...googleEvents];
   }, [events, taskEvents, googleEvents]);
 
   const filteredEvents = useMemo(() =>
@@ -422,17 +425,36 @@ export default function CalendarPage() {
   }, [filteredEvents, today]);
 
   // ── CRUD ─────────────────────────────────────────────────────────────────────
-  const saveEvent = useCallback((ev: Omit<CalEvent, "id"> & { id?: string }) => {
+  const saveEvent = useCallback(async (ev: Omit<CalEvent, "id"> & { id?: string }) => {
+    // If this is a task-synced event, write changes back to the actual task
+    if (ev.isTask && ev.taskId) {
+      await updateItem<Task>("tasks", ev.taskId, {
+        title: ev.title,
+        dueDate: ev.date,
+        description: ev.description || "",
+        category: ev.category,
+        startTime: ev.allDay ? undefined : ev.startTime,
+        endTime: ev.allDay ? undefined : ev.endTime,
+        allDay: ev.allDay,
+      });
+      // Also remove any stale overlay from custom events
+      setEvents(prev => {
+        const next = prev.filter(e => e.id !== ev.id);
+        saveEvents(next);
+        return next;
+      });
+      toast.success("Task & calendar event updated");
+      return;
+    }
+
+    // Regular calendar event
     setEvents(prev => {
       let next: CalEvent[];
       if (ev.id) {
         const exists = prev.some(e => e.id === ev.id);
         if (exists) {
-          // Update existing custom event
           next = prev.map(e => e.id === ev.id ? { ...e, ...ev } as CalEvent : e);
         } else {
-          // Event not in custom events (e.g. task-synced) — add as overlay
-          // This persists time/date overrides; allEvents dedup prefers this over the derived task event
           next = [...prev, { ...ev, id: ev.id } as CalEvent];
         }
       } else {
@@ -442,7 +464,7 @@ export default function CalendarPage() {
       return next;
     });
     toast.success(ev.id ? "Event updated" : "Event created");
-  }, []);
+  }, [updateItem]);
 
   const deleteEvent = useCallback((id: string) => {
     setEvents(prev => { const n = prev.filter(e => e.id !== id); saveEvents(n); return n; });
