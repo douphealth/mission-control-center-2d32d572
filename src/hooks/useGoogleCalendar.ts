@@ -116,13 +116,22 @@ export function useGoogleCalendar(opts?: {
             const { min, max } = getTimeRange();
             const rawEvents = await syncGCalEvents(min, max, force);
 
+            // Build set of GCal event IDs that originated from local tasks
+            const updatedTasks = await db.tasks.toArray();
+            const pushedGCalIds = new Set(
+                updatedTasks.map(t => t.gcalEventId).filter(Boolean)
+            );
+
+            // Filter out events that were pushed FROM this app to avoid duplicates
+            const externalEvents = rawEvents.filter(ev => !pushedGCalIds.has(ev.id));
+
             // Get calendar colors for mapping
             const calMap = new Map<string, string>();
             state.calendars.forEach(c => {
                 if (c.backgroundColor) calMap.set(c.id, c.backgroundColor);
             });
 
-            const events = rawEvents.map(ev =>
+            const events = externalEvents.map(ev =>
                 gCalEventToCalEvent(ev, ev.calendarId ? calMap.get(ev.calendarId) : undefined)
             );
 
