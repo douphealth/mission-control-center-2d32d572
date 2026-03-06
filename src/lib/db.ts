@@ -44,6 +44,7 @@ export interface Task {
     startTime?: string;   // HH:MM — calendar time support
     endTime?: string;     // HH:MM — calendar time support
     allDay?: boolean;     // defaults to true if not set
+    gcalEventId?: string; // Google Calendar event ID if pushed
 }
 
 export interface GitHubRepo {
@@ -232,6 +233,10 @@ class MissionControlDB extends Dexie {
             settings: 'id',
             customModules: 'id, name, order, visible',
             habits: 'id, name, frequency, createdAt',
+        });
+
+        this.version(2).stores({
+            tasks: 'id, title, priority, status, dueDate, category, createdAt, gcalEventId',
         });
     }
 }

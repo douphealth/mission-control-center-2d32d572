@@ -459,6 +459,56 @@ export async function pushTaskToGCal(task: {
   }
 }
 
+/**
+ * Push multiple local tasks to Google Calendar.
+ * Returns a map of localTaskId → gcalEventId for tasks that were created.
+ */
+export async function pushTasksToGCal(tasks: {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate: string;
+  startTime?: string;
+  endTime?: string;
+  allDay?: boolean;
+  gcalEventId?: string;
+}[]): Promise<Map<string, string>> {
+  if (!isGCalConnected()) return new Map();
+
+  const results = new Map<string, string>();
+
+  for (const task of tasks) {
+    if (task.gcalEventId) continue;
+    if (!task.dueDate) continue;
+
+    try {
+      const isAllDay = task.allDay !== false && !task.startTime;
+      const eventBody: any = {
+        summary: `📋 ${task.title}`,
+        description: task.description || '',
+      };
+
+      if (isAllDay) {
+        eventBody.start = { date: task.dueDate };
+        eventBody.end = { date: task.dueDate };
+      } else {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        eventBody.start = { dateTime: `${task.dueDate}T${task.startTime || '09:00'}:00`, timeZone: tz };
+        eventBody.end = { dateTime: `${task.dueDate}T${task.endTime || '10:00'}:00`, timeZone: tz };
+      }
+
+      const created = await createGCalEvent('primary', eventBody);
+      if (created?.id) {
+        results.set(task.id, created.id);
+      }
+    } catch (e) {
+      console.error(`Failed to push task "${task.title}" to GCal:`, e);
+    }
+  }
+
+  return results;
+}
+
 // ─── Cached events store (in-memory) ────────────────────────────────────────────
 
 let cachedEvents: GoogleCalendarEvent[] = [];
