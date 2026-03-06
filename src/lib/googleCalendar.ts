@@ -189,7 +189,11 @@ export async function signInWithGoogle(clientId: string): Promise<{
     let resolved = false;
 
     const handleMessage = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      // Accept messages from the redirect override origin (cross-domain) or same origin
+      const expectedOrigin = cfg.redirectUri
+        ? new URL(cfg.redirectUri).origin
+        : window.location.origin;
+      if (event.origin !== expectedOrigin) return;
       if (event.data?.type !== 'google-oauth-callback') return;
       if (event.data?.state !== state) return;
       if (resolved) return;

@@ -351,10 +351,16 @@ export default function SettingsPage() {
                     )}
                   </div>
 
-                  {isInIframe && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl text-sm font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  {isInIframe && !gcalRedirectOverride && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl text-sm font-medium bg-destructive/10 text-destructive border border-destructive/20">
                       <AlertTriangle size={15} />
-                      <span>You're inside an iframe (Lovable preview). Google OAuth won't work here — test from your <strong>published URL</strong>.</span>
+                      <span>⚠️ Set your <strong>Published URL Override</strong> below before connecting — Google OAuth cannot work from the Lovable preview origin.</span>
+                    </div>
+                  )}
+                  {isInIframe && gcalRedirectOverride && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl text-sm font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <Info size={15} />
+                      <span>Override set — the OAuth popup will open on <strong>{new URL(gcalRedirectOverride).origin}</strong>. Make sure this domain is whitelisted in Google Cloud Console.</span>
                     </div>
                   )}
 
@@ -428,7 +434,7 @@ export default function SettingsPage() {
                             toast.error(result.error || "Connection failed");
                           }
                         }}
-                        disabled={gcal.connecting || !gcalClientIdInput.trim()}
+                        disabled={gcal.connecting || !gcalClientIdInput.trim() || (isInIframe && !gcalRedirectOverride)}
                         className="btn-primary text-sm gap-2"
                       >
                         {gcal.connecting ? <Loader2 size={14} className="animate-spin" /> : <Calendar size={14} />}
