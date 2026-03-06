@@ -153,8 +153,8 @@ declare global {
 }
 
 /**
- * Initiates OAuth 2.0 sign-in. Opens a Google consent popup.
- * Returns the access token on success.
+ * Initiates OAuth 2.0 sign-in using a popup window.
+ * Uses the implicit grant flow via window.open to avoid iframe blocking.
  */
 export async function signInWithGoogle(clientId: string): Promise<{
   success: boolean;
@@ -163,48 +163,83 @@ export async function signInWithGoogle(clientId: string): Promise<{
   email?: string;
   error?: string;
 }> {
-  try {
-    await loadGisScript();
+  const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
+  const REDIRECT_URI = window.location.origin + '/oauth-callback.html';
 
-    if (!window.google?.accounts?.oauth2) {
-      return { success: false, error: 'Google Identity Services failed to load' };
-    }
+  const state = crypto.randomUUID();
 
-    return new Promise((resolve) => {
-      const tokenClient = window.google!.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email',
-        callback: async (response: any) => {
-          if (response.error) {
-            resolve({ success: false, error: response.error_description || response.error });
-            return;
-          }
-          
-          const accessToken = response.access_token;
-          const expiresIn = response.expires_in;
-          
-          // Get user email
-          let email = '';
-          try {
-            const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
-            const data = await userInfo.json();
-            email = data.email || '';
-          } catch { /* ignore */ }
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('client_id', clientId);
+  authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
+  authUrl.searchParams.set('response_type', 'token');
+  authUrl.searchParams.set('scope', SCOPES);
+  authUrl.searchParams.set('state', state);
+  authUrl.searchParams.set('prompt', 'consent');
+  authUrl.searchParams.set('include_granted_scopes', 'true');
 
-          resolve({ success: true, accessToken, expiresIn: Number(expiresIn), email });
-        },
-        error_callback: (err: any) => {
-          resolve({ success: false, error: err?.message || 'Auth cancelled' });
-        },
-      });
+  const popup = window.open(authUrl.toString(), 'google-oauth', 'width=500,height=650,popup=yes');
 
-      tokenClient.requestAccessToken({ prompt: 'consent' });
-    });
-  } catch (e: any) {
-    return { success: false, error: e.message };
+  if (!popup) {
+    return { success: false, error: 'Popup blocked — please allow popups for this site and try again.' };
   }
+
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'google-oauth-callback') return;
+      if (event.data?.state !== state) return;
+      if (resolved) return;
+      resolved = true;
+
+      window.removeEventListener('message', handleMessage);
+      clearInterval(pollTimer);
+      popup.close();
+
+      const { access_token, expires_in, error } = event.data;
+
+      if (error || !access_token) {
+        resolve({ success: false, error: error || 'No access token received' });
+        return;
+      }
+
+      // Get user email
+      let email = '';
+      try {
+        const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { Authorization: `Bearer ${access_token}` },
+        });
+        const data = await userInfo.json();
+        email = data.email || '';
+      } catch { /* ignore */ }
+
+      resolve({ success: true, accessToken: access_token, expiresIn: Number(expires_in), email });
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Poll in case popup is closed without completing
+    const pollTimer = setInterval(() => {
+      if (popup.closed && !resolved) {
+        resolved = true;
+        window.removeEventListener('message', handleMessage);
+        clearInterval(pollTimer);
+        resolve({ success: false, error: 'Sign-in cancelled' });
+      }
+    }, 500);
+
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        window.removeEventListener('message', handleMessage);
+        clearInterval(pollTimer);
+        popup.close();
+        resolve({ success: false, error: 'Sign-in timed out' });
+      }
+    }, 300_000);
+  });
 }
 
 /**
