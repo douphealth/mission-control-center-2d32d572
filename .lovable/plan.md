@@ -1,48 +1,58 @@
 
 
-## Problem Analysis
+## Root Cause
 
-There are **two distinct issues** causing the errors:
+The `invalid_client` / `ERR_BLOCKED_BY_RESPONSE` error happens because of an **origin mismatch**:
 
-### Issue 1: `ERR_BLOCKED_BY_RESPONSE` (Lovable preview)
-The Lovable editor runs your app inside an **iframe**. When `window.open()` is called from within an iframe, `window.location.origin` returns the Lovable preview URL (e.g., `https://id-preview--fa805700-eac5-449b-9240-02073fdf794a.lovable.app`). This origin is **not** whitelisted in your Google Cloud Console, so Google blocks it. Additionally, popup behavior from iframes is unreliable.
+- Your Google Cloud Console has `https://mission-control-center-2d32d572.pages.dev` configured
+- But you're testing from the **Lovable preview** where the origin is `https://id-preview--fa805700-eac5-449b-9240-02073fdf794a.lovable.app`
+- The **Published URL Override** field is **empty**, so the app sends the preview origin to Google, which doesn't match anything whitelisted
+- Your project is also **not published**, so there's no way to test from the pages.dev domain directly
 
-### Issue 2: `Error 401: invalid_client` (pages.dev)
-The redirect URI is computed dynamically as `window.location.origin + '/oauth-callback.html'`. If the **Authorized JavaScript Origins** in Google Cloud Console don't include the exact `pages.dev` domain, or there's a mismatch, Google returns `invalid_client`.
+The session replay confirms: the popup opens, Google rejects it immediately, popup closes, you see "Sign-in cancelled".
 
 ## Plan
 
-### 1. Show the exact redirect URI in the settings UI
-Display the computed redirect URI right below the Client ID input so the user can see exactly what URL needs to be whitelisted. This removes all guesswork. Include a copy button.
+### 1. Auto-detect and pre-fill the redirect override when in iframe
+When the app detects it's running inside an iframe (Lovable preview), automatically suggest and pre-fill the Published URL Override field with the user's configured pages.dev domain. This eliminates the manual step that's currently being missed.
 
-### 2. Also show the required JavaScript Origin
-Display `window.location.origin` so the user knows exactly what to add to **Authorized JavaScript Origins** in Google Cloud Console.
+### 2. Block the Connect button when override is needed but missing
+When in an iframe and no redirect override is set, disable the "Connect with Google" button and show a clear inline message: "Set your Published URL Override below before connecting — Google OAuth cannot work from the preview origin."
 
-### 3. Add a configurable redirect URI override
-Allow the user to optionally set a custom redirect URI (e.g., their published `pages.dev` URL) so the OAuth flow always uses a consistent, known domain regardless of where the app is loaded from. This is critical for the Lovable preview case.
+### 3. Update the postMessage origin check in signInWithGoogle
+Currently line 192 checks `event.origin !== window.location.origin`. When using a redirect override pointing to a different domain, the callback page posts from the override's origin, not the preview origin. This check must account for the override domain.
 
-### 4. Warn when running inside an iframe
-Detect if the app is inside an iframe (`window.self !== window.top`) and show a clear warning that Google OAuth must be tested from the published/deployed URL, not the Lovable preview.
+### 4. Update the setup guide to mention the redirect URI in step 3
+The setup guide currently tells users to add `window.location.origin` as the JS origin, but doesn't mention the redirect URI. Add a step for adding the redirect URI shown in the "Add these to your Google Cloud Console" box.
 
 ### Technical Details
 
 **Files to edit:**
-- `src/pages/SettingsPage.tsx` -- Add redirect URI display, JS origin display, iframe warning, and optional redirect override input
-- `src/lib/googleCalendar.ts` -- Read optional redirect URI override from config; add `redirectUri` to `GCalConfig`
+- `src/pages/SettingsPage.tsx` — Pre-fill override when in iframe, disable Connect when override missing in iframe, update setup guide step 3
+- `src/lib/googleCalendar.ts` — Fix postMessage origin check on line 192 to accept messages from the redirect override's origin
+- `public/oauth-callback.html` — Update to post message with `'*'` target origin (or the opener's origin), since opener and callback may be on different domains
 
-**Config change in `GCalConfig`:**
+**Key code change in `googleCalendar.ts`:**
 ```typescript
-redirectUri?: string; // optional override for published domain
+// Line 192: accept messages from override origin too
+const expectedOrigin = cfg.redirectUri 
+  ? new URL(cfg.redirectUri).origin 
+  : window.location.origin;
+if (event.origin !== expectedOrigin) return;
 ```
 
-**Redirect URI logic:**
-```typescript
-const REDIRECT_URI = cfg.redirectUri || (window.location.origin + '/oauth-callback.html');
+**Key change in `oauth-callback.html`:**
+```javascript
+// Post to opener regardless of origin mismatch
+// The state parameter provides CSRF protection
+window.opener.postMessage({ ... }, '*');
 ```
 
-**Iframe detection in Settings UI:**
+**Key change in `SettingsPage.tsx`:**
 ```typescript
-const isInIframe = window.self !== window.top;
-// Show warning banner if true
+// When in iframe, show mandatory override with helpful pre-fill
+if (isInIframe && !gcalRedirectOverride) {
+  // Show warning + disable Connect button
+}
 ```
 
