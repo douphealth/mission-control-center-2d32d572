@@ -14,10 +14,12 @@ import {
     syncGCalEvents,
     gCalEventToCalEvent,
     loadGisScript,
+    pushTasksToGCal,
     type GoogleCalendarList,
     type GoogleCalendarEvent,
     type GCalConfig,
 } from '@/lib/googleCalendar';
+import { db } from '@/lib/db';
 
 export interface GCalSyncState {
     connected: boolean;
@@ -90,12 +92,27 @@ export function useGoogleCalendar(opts?: {
         }
     }, []);
 
-    // Sync events
+    // Sync events (bidirectional: push local tasks + pull GCal events)
     const syncEvents = useCallback(async (force = false) => {
         if (!isGCalConnected()) return;
 
         setState(s => ({ ...s, syncing: true, error: null }));
         try {
+            // ── Push local tasks to Google Calendar ──
+            const allTasks = await db.tasks.toArray();
+            const tasksToPush = allTasks.filter(t => t.dueDate && !t.gcalEventId);
+            if (tasksToPush.length > 0) {
+                const pushed = await pushTasksToGCal(tasksToPush);
+                // Update local tasks with their gcalEventId
+                for (const [taskId, gcalId] of pushed) {
+                    await db.tasks.update(taskId, { gcalEventId: gcalId });
+                }
+                if (pushed.size > 0) {
+                    console.log(`📤 Pushed ${pushed.size} tasks to Google Calendar`);
+                }
+            }
+
+            // ── Pull events from Google Calendar ──
             const { min, max } = getTimeRange();
             const rawEvents = await syncGCalEvents(min, max, force);
 
