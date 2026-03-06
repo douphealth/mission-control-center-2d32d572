@@ -13,13 +13,15 @@
   const error = params.get('error');
 
   if (window.opener) {
+    // Use '*' for targetOrigin since opener may be on a different domain
+    // (e.g. Lovable preview). The 'state' parameter provides CSRF protection.
     window.opener.postMessage({
       type: 'google-oauth-callback',
       access_token: access_token || null,
       expires_in: expires_in || null,
       state: state || null,
       error: error || null,
-    }, window.location.origin);
+    }, '*');
   }
   // Popup will be closed by the opener
 </script>
