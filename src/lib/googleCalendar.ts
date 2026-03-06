@@ -43,6 +43,7 @@ export interface GCalConfig {
   autoSync: boolean;
   syncIntervalMinutes: number;
   lastSync: string | null;
+  redirectUri?: string; // optional override for published domain
 }
 
 // Color mapping for Google Calendar color IDs
@@ -164,7 +165,8 @@ export async function signInWithGoogle(clientId: string): Promise<{
   error?: string;
 }> {
   const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
-  const REDIRECT_URI = window.location.origin + '/oauth-callback.html';
+  const cfg = getGCalConfig();
+  const REDIRECT_URI = cfg.redirectUri || (window.location.origin + '/oauth-callback.html');
 
   const state = crypto.randomUUID();
 
