@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><title>Google Sign-In</title></head>
+<body>
+<p>Completing sign-in…</p>
+<script>
+  // Parse the hash fragment from the OAuth implicit flow redirect
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const access_token = params.get('access_token');
+  const expires_in = params.get('expires_in');
+  const state = params.get('state');
+  const error = params.get('error');
+
+  if (window.opener) {
+    window.opener.postMessage({
+      type: 'google-oauth-callback',
+      access_token: access_token || null,
+      expires_in: expires_in || null,
+      state: state || null,
+      error: error || null,
+    }, window.location.origin);
+  }
+  // Popup will be closed by the opener
+</script>
+</body>
+</html>
