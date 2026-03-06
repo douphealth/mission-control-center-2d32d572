@@ -59,6 +59,12 @@ export default function SettingsPage() {
   // Google Calendar
   const gcal = useGoogleCalendar({ autoFetch: false });
   const [gcalClientIdInput, setGcalClientIdInput] = useState(gcal.clientId);
+  const [gcalRedirectOverride, setGcalRedirectOverride] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('mc_gcal_config') || '{}').redirectUri || ''; } catch { return ''; }
+  });
+  const isInIframe = window.self !== window.top;
+  const computedRedirectUri = gcalRedirectOverride || (window.location.origin + '/oauth-callback.html');
+  const computedOrigin = gcalRedirectOverride ? new URL(gcalRedirectOverride).origin : window.location.origin;
 
   // Supabase state
   const [sbUrl, setSbUrl] = useState(getSupabaseConfig()?.url || "");
@@ -345,6 +351,13 @@ export default function SettingsPage() {
                     )}
                   </div>
 
+                  {isInIframe && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl text-sm font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <AlertTriangle size={15} />
+                      <span>You're inside an iframe (Lovable preview). Google OAuth won't work here — test from your <strong>published URL</strong>.</span>
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     <div>
                       <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">OAuth Client ID</label>
@@ -354,6 +367,45 @@ export default function SettingsPage() {
                         className="input-base font-mono text-xs"
                         placeholder="123456789-xxxxx.apps.googleusercontent.com"
                       />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                        Published URL Override <span className="text-muted-foreground font-normal">(optional)</span>
+                      </label>
+                      <input
+                        value={gcalRedirectOverride}
+                        onChange={e => {
+                          setGcalRedirectOverride(e.target.value);
+                          // Save to config
+                          const uri = e.target.value.trim();
+                          const raw = JSON.parse(localStorage.getItem('mc_gcal_config') || '{}');
+                          raw.redirectUri = uri || undefined;
+                          localStorage.setItem('mc_gcal_config', JSON.stringify(raw));
+                        }}
+                        className="input-base font-mono text-xs"
+                        placeholder="https://your-app.pages.dev/oauth-callback.html"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Set this to your deployed URL's callback if testing from Lovable preview
+                      </p>
+                    </div>
+
+                    {/* Required Google Cloud Console URLs */}
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground">Add these to your Google Cloud Console:</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-medium text-muted-foreground w-32 shrink-0">Authorized JS Origin</span>
+                          <code className="text-[11px] font-mono bg-background px-2 py-1 rounded-lg border border-border flex-1 truncate">{computedOrigin}</code>
+                          <CopyButton text={computedOrigin} />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-medium text-muted-foreground w-32 shrink-0">Redirect URI</span>
+                          <code className="text-[11px] font-mono bg-background px-2 py-1 rounded-lg border border-border flex-1 truncate">{computedRedirectUri}</code>
+                          <CopyButton text={computedRedirectUri} />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
