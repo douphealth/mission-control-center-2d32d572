@@ -9,7 +9,7 @@ let supabaseClient: SupabaseClient | null = null;
 let realtimeChannel: RealtimeChannel | null = null;
 let syncCallbacks: (() => void)[] = [];
 
-// ─── Config management ─────────────────────────────────────────────────────────
+const CLOUD_BASELINE_KEY = 'mc-cloud-baseline-ready';
 
 export function getSupabaseConfig(): { url: string; anonKey: string } | null {
     try {
