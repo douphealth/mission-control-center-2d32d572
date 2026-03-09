@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles, CheckSquare, Copy, Copy } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles, CheckSquare, Copy } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { Idea } from "@/lib/store";
 import { toast } from "sonner";
