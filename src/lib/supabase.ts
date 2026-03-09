@@ -355,6 +355,7 @@ export async function pullFromSupabase(): Promise<{ success: boolean; synced: nu
         }]);
 
         const removedDuplicates = await deduplicateAll();
+        markCloudBaselineReady();
         syncCallbacks.forEach(cb => cb());
         return { success: true, synced: totalAdded + totalUpdated + removedDuplicates, added: totalAdded, updated: totalUpdated };
     } catch (e: any) {
