@@ -365,7 +365,7 @@ export async function pullFromSupabase(): Promise<{ success: boolean; synced: nu
 // ─── Full two-way sync (merge both directions) ───────────────────────────────
 
 export async function fullSync(): Promise<{ success: boolean; pushed: number; pulled: number; error?: string }> {
-    const pushResult = await pushToSupabase();
+    const pushResult = await pushToSupabase({ mirrorDeletes: true });
     if (!pushResult.success) return { success: false, pushed: 0, pulled: 0, error: `Push failed: ${pushResult.error}` };
 
     const pullResult = await pullFromSupabase();
