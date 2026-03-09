@@ -46,6 +46,7 @@ interface DashboardContextValue {
   addItem: <T extends { id: string }>(table: string, item: Omit<T, 'id'>) => Promise<string>;
   updateItem: <T extends { id: string }>(table: string, id: string, changes: Partial<T>) => Promise<void>;
   deleteItem: (table: string, id: string) => Promise<void>;
+  duplicateItem: (table: string, id: string, overrides?: Record<string, any>) => Promise<string>;
   bulkAddItems: <T extends { id: string }>(table: string, items: Omit<T, 'id'>[]) => Promise<void>;
 
   // Settings
