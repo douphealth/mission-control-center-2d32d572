@@ -128,6 +128,11 @@ export default function CredentialsPage() {
     toast.success("Credential deleted");
   };
 
+  const handleDuplicate = async (id: string) => {
+    const newId = await duplicateItem("credentials", id);
+    if (newId) toast.success("Credential duplicated");
+  };
+
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
   const bulkDelete = useCallback(async () => {
