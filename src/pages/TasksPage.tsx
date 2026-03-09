@@ -473,6 +473,7 @@ function KanbanColumn({
               isDragging={draggingId === t.id}
               onEdit={() => onEdit(t)}
               onDelete={() => onDelete(t.id)}
+              onDuplicate={() => onDuplicate(t.id)}
               onToggle={() => onToggle(t.id)}
               onToggleSub={(subId) => onToggleSub(t.id, subId)}
               onDragStart={e => { e.dataTransfer.setData("taskId", t.id); e.dataTransfer.effectAllowed = "move"; }}
