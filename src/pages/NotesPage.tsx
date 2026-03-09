@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pin, PinOff, Trash2, Search, Tag, ChevronRight, CheckSquare } from "lucide-react";
+import { Plus, Pin, PinOff, Trash2, Search, Tag, ChevronRight, CheckSquare, Copy } from "lucide-react";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
 import { toast } from "sonner";
