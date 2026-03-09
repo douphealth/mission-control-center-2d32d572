@@ -298,7 +298,9 @@ export async function pullFromSupabase(): Promise<{ success: boolean; synced: nu
             tables: TABLE_MAP.map(t => t.remote),
         }]);
 
-        return { success: true, synced: totalAdded + totalUpdated, added: totalAdded, updated: totalUpdated };
+        const removedDuplicates = await deduplicateAll();
+        syncCallbacks.forEach(cb => cb());
+        return { success: true, synced: totalAdded + totalUpdated + removedDuplicates, added: totalAdded, updated: totalUpdated };
     } catch (e: any) {
         return { success: false, synced: 0, added: 0, updated: 0, error: e?.message };
     }
