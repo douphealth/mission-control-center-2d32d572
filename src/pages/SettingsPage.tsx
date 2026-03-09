@@ -21,7 +21,7 @@ const tabs = [
   { id: "profile", label: "Profile", icon: User },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "google-calendar", label: "Google Calendar", icon: Calendar },
-  { id: "supabase", label: "Cloud Backup", icon: Cloud },
+  { id: "supabase", label: "Cloud Sync", icon: Cloud },
   { id: "security", label: "Security", icon: Shield },
   { id: "data", label: "Data", icon: Database },
   { id: "about", label: "About", icon: Info },
