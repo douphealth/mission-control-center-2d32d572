@@ -274,14 +274,20 @@ export async function pullFromSupabase(): Promise<{ success: boolean; synced: nu
                 const cloudItem = row.data;
                 if (!cloudItem || !cloudItem.id) continue;
 
-                if (localMap.has(cloudItem.id)) {
-                    // Update existing — cloud wins for conflicts
-                    await local.put(cloudItem);
-                    totalUpdated++;
-                } else {
+                const localItem = localMap.get(cloudItem.id);
+                if (!localItem) {
                     // New from cloud — add without touching existing local data
                     await local.put(cloudItem);
                     totalAdded++;
+                    continue;
+                }
+
+                // Update only when actual content changed (prevents endless re-renders)
+                const localSerialized = JSON.stringify(localItem);
+                const cloudSerialized = JSON.stringify(cloudItem);
+                if (localSerialized !== cloudSerialized) {
+                    await local.put(cloudItem);
+                    totalUpdated++;
                 }
             }
         }
