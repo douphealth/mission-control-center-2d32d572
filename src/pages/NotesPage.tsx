@@ -157,12 +157,15 @@ export default function NotesPage() {
                     className="text-lg sm:text-xl font-bold text-card-foreground bg-transparent outline-none flex-1"
                     placeholder="Note title..."
                   />
-                  <button onClick={() => togglePin(selected.id)} className={`p-1.5 rounded-lg hover:bg-secondary transition-colors ${selected.pinned ? "text-warning" : "text-muted-foreground"}`}>
-                    {selected.pinned ? <PinOff size={16} /> : <Pin size={16} />}
-                  </button>
-                  <button onClick={() => deleteNote(selected.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                    <Trash2 size={16} />
-                  </button>
+                   <button onClick={() => togglePin(selected.id)} className={`p-1.5 rounded-lg hover:bg-secondary transition-colors ${selected.pinned ? "text-warning" : "text-muted-foreground"}`}>
+                     {selected.pinned ? <PinOff size={16} /> : <Pin size={16} />}
+                   </button>
+                   <button onClick={() => duplicateNote(selected.id)} className="p-1.5 rounded-lg hover:bg-blue-500/10 text-muted-foreground hover:text-blue-500 transition-colors" title="Duplicate">
+                     <Copy size={16} />
+                   </button>
+                   <button onClick={() => deleteNote(selected.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                     <Trash2 size={16} />
+                   </button>
                 </div>
                 <textarea
                   value={selected.content}

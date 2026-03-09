@@ -180,6 +180,7 @@ export default function PaymentsPage() {
                   {(payment.status === "pending" || payment.status === "overdue") && (
                     <button onClick={() => markPaid(payment.id)} className="text-[11px] text-success hover:underline px-1.5">Pay</button>
                   )}
+                  <button onClick={() => duplicatePayment(payment.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={12} /></button>
                   <button onClick={() => openEdit(payment)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
                   <button onClick={() => deletePayment(payment.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
                 </div>
