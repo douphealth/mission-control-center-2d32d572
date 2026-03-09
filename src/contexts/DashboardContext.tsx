@@ -170,7 +170,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Zustand stores
   const { activeSection, setActiveSection, sidebarOpen, setSidebarOpen, sidebarCollapsed } = useNavigationStore();
   const { userName, userRole, theme, toggleTheme, setTheme, loadSettings } = useSettingsStore();
-  const { isLoading, setIsLoading, dashboardLayout, setDashboardLayout, addItem, updateItem, deleteItem, bulkAddItems, updateSettings, saveDashboardLayout, exportAllData, importAllData, updateData } = useDataStore();
+  const { isLoading, setIsLoading, dashboardLayout, setDashboardLayout, addItem, updateItem, deleteItem, duplicateItem, bulkAddItems, updateSettings, saveDashboardLayout, exportAllData, importAllData, updateData } = useDataStore();
 
   const initialized = useRef(false);
 
