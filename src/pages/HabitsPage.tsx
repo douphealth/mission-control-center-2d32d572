@@ -21,7 +21,7 @@ const emptyForm = {
 };
 
 export default function HabitsPage() {
-    const { habits, addItem, updateItem, deleteItem } = useDashboard();
+    const { habits, addItem, updateItem, deleteItem, duplicateItem } = useDashboard();
     const [modalOpen, setModalOpen] = useState(false);
     const [editId, setEditId] = useState<string | null>(null);
     const [form, setForm] = useState<Omit<HabitTracker, "id">>(emptyForm);
