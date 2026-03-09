@@ -50,7 +50,7 @@ const fadeUp = (i: number) => ({
 // ─── Component ──────────────────────────────────────────────────────────────────
 
 export default function WebsitesPage() {
-  const { websites, updateData } = useDashboard();
+  const { websites, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
