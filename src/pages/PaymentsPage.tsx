@@ -50,6 +50,7 @@ export default function PaymentsPage() {
     updateData({ payments: payments.filter(p => p.id !== id) });
     toast.success("Payment deleted");
   };
+  const duplicatePayment = async (id: string) => { const newId = await duplicateItem("payments", id, { status: "pending", paidDate: "" }); if (newId) toast.success("Payment duplicated"); };
   const markPaid = (id: string) => {
     updateData({ payments: payments.map(p => p.id === id ? { ...p, status: "paid" as const, paidDate: new Date().toISOString().split("T")[0] } : p) });
     toast.success("Marked as paid");
