@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw, CheckSquare, Copym "lucide-react";
+import { Plus, Search, Edit2, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw, CheckSquare, Copy } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect } from "@/components/FormModal";
 import type { Payment } from "@/lib/store";
 import { toast } from "sonner";
