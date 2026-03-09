@@ -410,13 +410,14 @@ function KanbanCard({
 // ─── Kanban Column ────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  status, tasks, onEdit, onDelete, onToggle, onToggleSub,
+  status, tasks, onEdit, onDelete, onDuplicate, onToggle, onToggleSub,
   onAddNew, onDrop, draggingId,
 }: {
   status: typeof STATUSES[number];
   tasks: Task[];
   onEdit: (t: Task) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onToggle: (id: string) => void;
   onToggleSub: (taskId: string, subId: string) => void;
   onAddNew: () => void;
