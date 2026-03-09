@@ -9,6 +9,36 @@ let supabaseClient: SupabaseClient | null = null;
 let realtimeChannel: RealtimeChannel | null = null;
 let syncCallbacks: (() => void)[] = [];
 
+const CLOUD_BASELINE_KEY = 'mc-cloud-baseline-ready';
+
+function hasCloudBaseline(): boolean {
+    try {
+        return localStorage.getItem(CLOUD_BASELINE_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function markCloudBaselineReady(): void {
+    try {
+        localStorage.setItem(CLOUD_BASELINE_KEY, '1');
+    } catch { }
+}
+
+function clearCloudBaseline(): void {
+    try {
+        localStorage.removeItem(CLOUD_BASELINE_KEY);
+    } catch { }
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+    return chunks;
+}
+
 // ─── Config management ─────────────────────────────────────────────────────────
 
 export function getSupabaseConfig(): { url: string; anonKey: string } | null {
@@ -23,6 +53,7 @@ export function getSupabaseConfig(): { url: string; anonKey: string } | null {
 export function setSupabaseConfig(url: string, anonKey: string): void {
     localStorage.setItem('mc-supabase-url', url.trim());
     localStorage.setItem('mc-supabase-anon-key', anonKey.trim());
+    clearCloudBaseline();
     if (realtimeChannel) {
         realtimeChannel.unsubscribe();
         realtimeChannel = null;
@@ -33,6 +64,7 @@ export function setSupabaseConfig(url: string, anonKey: string): void {
 export function clearSupabaseConfig(): void {
     localStorage.removeItem('mc-supabase-url');
     localStorage.removeItem('mc-supabase-anon-key');
+    clearCloudBaseline();
     if (realtimeChannel) {
         realtimeChannel.unsubscribe();
         realtimeChannel = null;
@@ -204,24 +236,42 @@ export async function getSyncPreview(): Promise<SyncPreview | null> {
     };
 }
 
-// ─── Push local → Supabase (upsert, never deletes cloud data) ────────────────
+// ─── Push local → Supabase (upsert + optional mirror delete) ─────────────────
 
-export async function pushToSupabase(): Promise<{ success: boolean; synced: number; error?: string }> {
+export async function pushToSupabase(options?: { mirrorDeletes?: boolean }): Promise<{ success: boolean; synced: number; error?: string }> {
     const client = getSupabase();
     if (!client) return { success: false, synced: 0, error: 'Not connected' };
 
+    const mirrorDeletes = options?.mirrorDeletes ?? hasCloudBaseline();
     let totalSynced = 0;
     const syncedTables: string[] = [];
 
     try {
         for (const { local, remote } of TABLE_MAP) {
             const items = await local.toArray();
-            if (items.length === 0) continue;
+            const localIds = new Set(items.map((item: any) => item.id));
 
-            const rows = items.map((item: any) => ({ id: item.id, data: item }));
-            const { error } = await client.from(remote).upsert(rows, { onConflict: 'id' });
-            if (error) throw new Error(`${remote}: ${error.message}`);
-            totalSynced += items.length;
+            if (items.length > 0) {
+                const rows = items.map((item: any) => ({ id: item.id, data: item }));
+                const { error } = await client.from(remote).upsert(rows, { onConflict: 'id' });
+                if (error) throw new Error(`${remote}: ${error.message}`);
+                totalSynced += items.length;
+            }
+
+            if (mirrorDeletes) {
+                const { data: remoteRows, error: remoteErr } = await client.from(remote).select('id');
+                if (remoteErr) throw new Error(`${remote}: ${remoteErr.message}`);
+
+                const toDelete = (remoteRows ?? [])
+                    .map((row: any) => row.id as string)
+                    .filter((id: string) => !localIds.has(id));
+
+                for (const batch of chunkArray(toDelete, 500)) {
+                    const { error: delErr } = await client.from(remote).delete().in('id', batch);
+                    if (delErr) throw new Error(`${remote}: ${delErr.message}`);
+                }
+            }
+
             syncedTables.push(remote);
         }
 
@@ -237,7 +287,7 @@ export async function pushToSupabase(): Promise<{ success: boolean; synced: numb
 
         // Log sync
         await client.from('mc_sync_log').insert([{
-            direction: 'push',
+            direction: mirrorDeletes ? 'push_mirror' : 'push',
             tables: syncedTables,
         }]);
 
@@ -305,6 +355,7 @@ export async function pullFromSupabase(): Promise<{ success: boolean; synced: nu
         }]);
 
         const removedDuplicates = await deduplicateAll();
+        markCloudBaselineReady();
         syncCallbacks.forEach(cb => cb());
         return { success: true, synced: totalAdded + totalUpdated + removedDuplicates, added: totalAdded, updated: totalUpdated };
     } catch (e: any) {
@@ -315,7 +366,7 @@ export async function pullFromSupabase(): Promise<{ success: boolean; synced: nu
 // ─── Full two-way sync (merge both directions) ───────────────────────────────
 
 export async function fullSync(): Promise<{ success: boolean; pushed: number; pulled: number; error?: string }> {
-    const pushResult = await pushToSupabase();
+    const pushResult = await pushToSupabase({ mirrorDeletes: true });
     if (!pushResult.success) return { success: false, pushed: 0, pulled: 0, error: `Push failed: ${pushResult.error}` };
 
     const pullResult = await pullFromSupabase();
