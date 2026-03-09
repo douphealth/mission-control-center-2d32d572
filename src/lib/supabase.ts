@@ -64,6 +64,7 @@ export function setSupabaseConfig(url: string, anonKey: string): void {
 export function clearSupabaseConfig(): void {
     localStorage.removeItem('mc-supabase-url');
     localStorage.removeItem('mc-supabase-anon-key');
+    clearCloudBaseline();
     if (realtimeChannel) {
         realtimeChannel.unsubscribe();
         realtimeChannel = null;
