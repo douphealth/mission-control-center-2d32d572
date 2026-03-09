@@ -11,7 +11,7 @@ import { toast } from "sonner";
 const emptyLink: Omit<LinkItem, "id"> = { title: "", url: "", category: "Tools", status: "active", description: "", dateAdded: new Date().toISOString().split("T")[0], pinned: false };
 
 export default function LinksPage() {
-  const { links, updateData } = useDashboard();
+  const { links, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -38,6 +38,7 @@ export default function LinksPage() {
   };
   const togglePin = (id: string) => updateData({ links: links.map(l => l.id === id ? { ...l, pinned: !l.pinned } : l) });
   const deleteLink = (id: string) => updateData({ links: links.filter(l => l.id !== id) });
+  const duplicateLink = async (id: string) => { const newId = await duplicateItem("links", id); if (newId) toast.success("Link duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
   const bulkDelete = useCallback(() => {
@@ -130,6 +131,7 @@ export default function LinksPage() {
                 <a href={link.url.match(/^https?:\/\//) ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary p-0.5"><ExternalLink size={13} /></a>
                 <button onClick={() => navigator.clipboard.writeText(link.url)} className="text-muted-foreground hover:text-foreground p-0.5"><Copy size={13} /></button>
                 <button onClick={() => togglePin(link.id)} className="text-muted-foreground hover:text-warning p-0.5">{link.pinned ? <PinOff size={13} /> : <Pin size={13} />}</button>
+                <button onClick={() => duplicateLink(link.id)} className="text-muted-foreground hover:text-blue-500 p-0.5" title="Duplicate"><Copy size={13} /></button>
                 <button onClick={() => openEdit(link)} className="text-muted-foreground hover:text-foreground p-0.5"><Edit2 size={13} /></button>
                 <button onClick={() => deleteLink(link.id)} className="text-muted-foreground hover:text-destructive p-0.5"><Trash2 size={13} /></button>
               </div>

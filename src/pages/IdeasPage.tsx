@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles, CheckSquare } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles, CheckSquare, Copy } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { Idea } from "@/lib/store";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ const priorityDot: Record<string, string> = { high: "bg-destructive", medium: "b
 const emptyIdea: Omit<Idea, "id"> = { title: "", description: "", category: "General", priority: "medium", status: "spark", tags: [], linkedProject: "", votes: 0, createdAt: new Date().toISOString().split("T")[0], updatedAt: new Date().toISOString().split("T")[0] };
 
 export default function IdeasPage() {
-  const { ideas, updateData } = useDashboard();
+  const { ideas, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,6 +53,7 @@ export default function IdeasPage() {
     updateData({ ideas: ideas.filter(i => i.id !== id) });
     toast.success("Idea deleted");
   };
+  const duplicateIdea = async (id: string) => { const newId = await duplicateItem("ideas", id, { votes: 0 }); if (newId) toast.success("Idea duplicated"); };
   const upvote = (id: string) => {
     updateData({ ideas: ideas.map(i => i.id === id ? { ...i, votes: i.votes + 1 } : i) });
   };
@@ -165,10 +166,11 @@ export default function IdeasPage() {
                     <span className="badge-muted text-[10px]">{idea.category}</span>
                   </div>
                   {!bulk.bulkMode && (
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEdit(idea)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
-                      <button onClick={() => deleteIdea(idea.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
-                    </div>
+                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button onClick={() => duplicateIdea(idea.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={12} /></button>
+                       <button onClick={() => openEdit(idea)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
+                       <button onClick={() => deleteIdea(idea.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
+                     </div>
                   )}
                 </div>
               </div>

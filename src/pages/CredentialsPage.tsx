@@ -59,7 +59,7 @@ function MaskedField({ value, label, isVisible, onReveal, onCopy, isMasterLocked
 }
 
 export default function CredentialsPage() {
-  const { credentials, addItem, updateItem, deleteItem } = useDashboard();
+  const { credentials, addItem, updateItem, deleteItem, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
@@ -126,6 +126,11 @@ export default function CredentialsPage() {
     if (!confirm("Delete this credential?")) return;
     await deleteItem("credentials", id);
     toast.success("Credential deleted");
+  };
+
+  const handleDuplicate = async (id: string) => {
+    const newId = await duplicateItem("credentials", id);
+    if (newId) toast.success("Credential duplicated");
   };
 
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
@@ -235,6 +240,7 @@ export default function CredentialsPage() {
                       <a href={cred.url.match(/^https?:\/\//) ? cred.url : `https://${cred.url}`} target="_blank" rel="noopener noreferrer"
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"><ExternalLink size={12} /></a>
                     )}
+                    <button onClick={() => handleDuplicate(cred.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-colors" title="Duplicate"><Copy size={12} /></button>
                     <button onClick={() => openEdit(cred)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"><Edit2 size={12} /></button>
                     <button onClick={() => handleDelete(cred.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><Trash2 size={12} /></button>
                   </div>

@@ -5,7 +5,7 @@ import {
   Plus, Search, CheckCircle2, Circle, AlertTriangle, Edit2, Trash2,
   GripVertical, ChevronDown, LayoutGrid, List, Flag, Tag, Calendar,
   X, Clock, ArrowRight, Zap, Target, Flame, Filter, MoreHorizontal,
-  CheckSquare, Layers, TrendingUp, BarChart3
+  CheckSquare, Layers, TrendingUp, BarChart3, Copy
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Task } from "@/lib/db";
@@ -278,12 +278,13 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
 // ─── Kanban Card ──────────────────────────────────────────────────────────────
 
 function KanbanCard({
-  task, onEdit, onDelete, onToggle, onToggleSub,
+  task, onEdit, onDelete, onDuplicate, onToggle, onToggleSub,
   isDragging, onDragStart, onDragEnd,
 }: {
   task: Task;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
   onToggle: () => void;
   onToggleSub: (subId: string) => void;
   isDragging: boolean;
@@ -333,6 +334,11 @@ function KanbanCard({
           </div>
           {/* Actions */}
           <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+            <button onClick={e => { e.stopPropagation(); onDuplicate(); }}
+              className="p-1.5 sm:p-1 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-colors touch-manipulation"
+              title="Duplicate">
+              <Copy size={12} />
+            </button>
             <button onClick={e => { e.stopPropagation(); onEdit(); }}
               className="p-1.5 sm:p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
               <Edit2 size={12} />
@@ -404,13 +410,14 @@ function KanbanCard({
 // ─── Kanban Column ────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  status, tasks, onEdit, onDelete, onToggle, onToggleSub,
+  status, tasks, onEdit, onDelete, onDuplicate, onToggle, onToggleSub,
   onAddNew, onDrop, draggingId,
 }: {
   status: typeof STATUSES[number];
   tasks: Task[];
   onEdit: (t: Task) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onToggle: (id: string) => void;
   onToggleSub: (taskId: string, subId: string) => void;
   onAddNew: () => void;
@@ -466,6 +473,7 @@ function KanbanColumn({
               isDragging={draggingId === t.id}
               onEdit={() => onEdit(t)}
               onDelete={() => onDelete(t.id)}
+              onDuplicate={() => onDuplicate(t.id)}
               onToggle={() => onToggle(t.id)}
               onToggleSub={(subId) => onToggleSub(t.id, subId)}
               onDragStart={e => { e.dataTransfer.setData("taskId", t.id); e.dataTransfer.effectAllowed = "move"; }}
@@ -485,8 +493,8 @@ function KanbanColumn({
 
 // ─── List Row ─────────────────────────────────────────────────────────────────
 
-function ListRow({ task, onEdit, onDelete, onToggle, onToggleSub, index }: {
-  task: Task; onEdit: () => void; onDelete: () => void; onToggle: () => void;
+function ListRow({ task, onEdit, onDelete, onDuplicate, onToggle, onToggleSub, index }: {
+  task: Task; onEdit: () => void; onDelete: () => void; onDuplicate: () => void; onToggle: () => void;
   onToggleSub: (sub: string) => void; index: number;
 }) {
   const pr = getPriority(task.priority);
@@ -567,6 +575,9 @@ function ListRow({ task, onEdit, onDelete, onToggle, onToggleSub, index }: {
 
         {/* Actions */}
         <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+          <button onClick={onDuplicate} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-colors touch-manipulation" title="Duplicate">
+            <Copy size={14} />
+          </button>
           <button onClick={onEdit} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
             <Edit2 size={14} />
           </button>
@@ -600,7 +611,7 @@ function ListRow({ task, onEdit, onDelete, onToggle, onToggleSub, index }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TasksPage() {
-  const { tasks, addItem, updateItem, deleteItem } = useDashboard();
+  const { tasks, addItem, updateItem, deleteItem, duplicateItem } = useDashboard();
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [view, setView] = useState<"kanban" | "list">(isMobile ? "list" : "kanban");
@@ -667,6 +678,11 @@ export default function TasksPage() {
     await deleteItem("tasks", id);
     toast.success("Task deleted");
   }, [deleteItem]);
+
+  const handleDuplicate = useCallback(async (id: string) => {
+    const newId = await duplicateItem("tasks", id, { status: "todo", completedAt: undefined });
+    if (newId) toast.success("Task duplicated ✓");
+  }, [duplicateItem]);
 
   const handleToggle = useCallback(async (id: string) => {
     const t = tasks.find(x => x.id === id);
@@ -849,6 +865,7 @@ export default function TasksPage() {
               tasks={tasksByStatus[status.id] || []}
               onEdit={t => setModal({ open: true, task: t })}
               onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
               onToggle={handleToggle}
               onToggleSub={handleToggleSub}
               onAddNew={() => setModal({ open: true, task: null, defaultStatus: status.id })}
@@ -870,6 +887,7 @@ export default function TasksPage() {
                 index={i}
                 onEdit={() => setModal({ open: true, task })}
                 onDelete={() => handleDelete(task.id)}
+                onDuplicate={() => handleDuplicate(task.id)}
                 onToggle={() => handleToggle(task.id)}
                 onToggleSub={(subId) => handleToggleSub(task.id, subId)}
               />

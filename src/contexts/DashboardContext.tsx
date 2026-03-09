@@ -46,6 +46,7 @@ interface DashboardContextValue {
   addItem: <T extends { id: string }>(table: string, item: Omit<T, 'id'>) => Promise<string>;
   updateItem: <T extends { id: string }>(table: string, id: string, changes: Partial<T>) => Promise<void>;
   deleteItem: (table: string, id: string) => Promise<void>;
+  duplicateItem: (table: string, id: string, overrides?: Record<string, any>) => Promise<string>;
   bulkAddItems: <T extends { id: string }>(table: string, items: Omit<T, 'id'>[]) => Promise<void>;
 
   // Settings
@@ -169,7 +170,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Zustand stores
   const { activeSection, setActiveSection, sidebarOpen, setSidebarOpen, sidebarCollapsed } = useNavigationStore();
   const { userName, userRole, theme, toggleTheme, setTheme, loadSettings } = useSettingsStore();
-  const { isLoading, setIsLoading, dashboardLayout, setDashboardLayout, addItem, updateItem, deleteItem, bulkAddItems, updateSettings, saveDashboardLayout, exportAllData, importAllData, updateData } = useDataStore();
+  const { isLoading, setIsLoading, dashboardLayout, setDashboardLayout, addItem, updateItem, deleteItem, duplicateItem, bulkAddItems, updateSettings, saveDashboardLayout, exportAllData, importAllData, updateData } = useDataStore();
 
   const initialized = useRef(false);
 
@@ -260,7 +261,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     userName, userRole, theme, sidebarCollapsed, dashboardLayout,
     activeSection, setActiveSection, sidebarOpen, setSidebarOpen,
     toggleTheme, setTheme,
-    addItem, updateItem, deleteItem, bulkAddItems,
+    addItem, updateItem, deleteItem, duplicateItem, bulkAddItems,
     updateSettings, saveDashboardLayout,
     isLoading,
     exportAllData, importAllData,

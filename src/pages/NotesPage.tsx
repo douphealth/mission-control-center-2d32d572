@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pin, PinOff, Trash2, Search, Tag, ChevronRight, CheckSquare } from "lucide-react";
+import { Plus, Pin, PinOff, Trash2, Search, Tag, ChevronRight, CheckSquare, Copy } from "lucide-react";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ const colorMap: Record<string, { border: string; dot: string }> = {
 };
 
 export default function NotesPage() {
-  const { notes, updateData } = useDashboard();
+  const { notes, updateData, duplicateItem } = useDashboard();
   const [selectedId, setSelectedId] = useState<string | null>(notes[0]?.id ?? null);
   const [search, setSearch] = useState("");
   const bulk = useBulkActions<typeof notes[0]>();
@@ -53,6 +53,11 @@ export default function NotesPage() {
     const remaining = notes.filter(n => n.id !== id);
     updateData({ notes: remaining });
     if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
+  };
+
+  const duplicateNote = async (id: string) => {
+    const newId = await duplicateItem("notes", id);
+    if (newId) { toast.success("Note duplicated"); setSelectedId(newId); }
   };
 
   const bulkDelete = useCallback(() => {
@@ -152,12 +157,15 @@ export default function NotesPage() {
                     className="text-lg sm:text-xl font-bold text-card-foreground bg-transparent outline-none flex-1"
                     placeholder="Note title..."
                   />
-                  <button onClick={() => togglePin(selected.id)} className={`p-1.5 rounded-lg hover:bg-secondary transition-colors ${selected.pinned ? "text-warning" : "text-muted-foreground"}`}>
-                    {selected.pinned ? <PinOff size={16} /> : <Pin size={16} />}
-                  </button>
-                  <button onClick={() => deleteNote(selected.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                    <Trash2 size={16} />
-                  </button>
+                   <button onClick={() => togglePin(selected.id)} className={`p-1.5 rounded-lg hover:bg-secondary transition-colors ${selected.pinned ? "text-warning" : "text-muted-foreground"}`}>
+                     {selected.pinned ? <PinOff size={16} /> : <Pin size={16} />}
+                   </button>
+                   <button onClick={() => duplicateNote(selected.id)} className="p-1.5 rounded-lg hover:bg-blue-500/10 text-muted-foreground hover:text-blue-500 transition-colors" title="Duplicate">
+                     <Copy size={16} />
+                   </button>
+                   <button onClick={() => deleteNote(selected.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                     <Trash2 size={16} />
+                   </button>
                 </div>
                 <textarea
                   value={selected.content}

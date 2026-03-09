@@ -29,6 +29,7 @@ interface DataState {
     addItem: <T extends { id: string }>(table: string, item: Omit<T, 'id'>) => Promise<string>;
     updateItem: <T extends { id: string }>(table: string, id: string, changes: Partial<T>) => Promise<void>;
     deleteItem: (table: string, id: string) => Promise<void>;
+    duplicateItem: (table: string, id: string, overrides?: Record<string, any>) => Promise<string>;
     bulkAddItems: <T extends { id: string }>(table: string, items: Omit<T, 'id'>[]) => Promise<void>;
 
     // ─── Settings ─────────────────────────────────────────────────────────────
@@ -119,6 +120,29 @@ export const useDataStore = create<DataState>((set, _get) => ({
         if (!tableRef) throw new Error(`Unknown table: ${table}`);
         await tableRef.delete(id);
         schedulePush();
+    },
+
+    duplicateItem: async (table: string, id: string, overrides: Record<string, any> = {}): Promise<string> => {
+        const tableRef = getTable(table);
+        if (!tableRef) throw new Error(`Unknown table: ${table}`);
+        const original = await tableRef.get(id);
+        if (!original) throw new Error(`Item not found: ${id}`);
+        const newId = genId();
+        const { id: _oldId, ...rest } = original;
+        const now = new Date().toISOString().split('T')[0];
+        const clone = { ...rest, id: newId, ...overrides };
+        // Add " (Copy)" to name/title/label fields
+        if (clone.title && !overrides.title) clone.title = `${clone.title} (Copy)`;
+        else if (clone.name && !overrides.name) clone.name = `${clone.name} (Copy)`;
+        else if (clone.label && !overrides.label) clone.label = `${clone.label} (Copy)`;
+        // Reset dates
+        if (clone.createdAt && !overrides.createdAt) clone.createdAt = now;
+        if (clone.dateAdded && !overrides.dateAdded) clone.dateAdded = now;
+        if (clone.lastUpdated && !overrides.lastUpdated) clone.lastUpdated = now;
+        if (clone.updatedAt && !overrides.updatedAt) clone.updatedAt = now;
+        await tableRef.put(clone);
+        schedulePush();
+        return newId;
     },
 
     bulkAddItems: async <T extends { id: string }>(table: string, items: Omit<T, 'id'>[]): Promise<void> => {

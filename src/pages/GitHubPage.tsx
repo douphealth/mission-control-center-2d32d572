@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search, Rocket, Code2, CheckSquare } from "lucide-react";
+import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search, Rocket, Code2, CheckSquare, Copy } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { GitHubRepo } from "@/lib/store";
 import { useBulkActions } from "@/hooks/useBulkActions";
@@ -14,7 +14,7 @@ const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScri
 const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0], devPlatformUrl: "", deploymentUrl: "" };
 
 export default function GitHubPage() {
-  const { repos, updateData } = useDashboard();
+  const { repos, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -37,6 +37,7 @@ export default function GitHubPage() {
     setModalOpen(false);
   };
   const deleteRepo = (id: string) => setPendingDeleteId(id);
+  const duplicateRepo = async (id: string) => { const newId = await duplicateItem("repos", id); if (newId) toast.success("Repo duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
   const closeDeleteDialog = useCallback(() => {
@@ -140,6 +141,7 @@ export default function GitHubPage() {
               {repo.devPlatformUrl && <a href={repo.devPlatformUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Code2 size={12} /> Platform</a>}
               {repo.deploymentUrl && <a href={repo.deploymentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Rocket size={12} /> Deploy</a>}
               <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => duplicateRepo(repo.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={13} /></button>
                 <button onClick={() => openEdit(repo)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
                 <button onClick={() => deleteRepo(repo.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
               </div>

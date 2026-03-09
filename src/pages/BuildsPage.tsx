@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Trash2, Plus, Edit2, Search, CheckSquare } from "lucide-react";
+import { ExternalLink, Trash2, Plus, Edit2, Search, CheckSquare, Copy } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { BuildProject } from "@/lib/db";
 import { useBulkActions } from "@/hooks/useBulkActions";
@@ -18,7 +18,7 @@ const statusOrder: Record<string, number> = { ideation: 0, building: 1, testing:
 const emptyBuild: Omit<BuildProject, "id"> = { name: "", platform: "bolt", projectUrl: "", deployedUrl: "", description: "", techStack: [], status: "ideation", startedDate: new Date().toISOString().split("T")[0], lastWorkedOn: new Date().toISOString().split("T")[0], nextSteps: "", githubRepo: "" };
 
 export default function BuildsPage() {
-  const { buildProjects, updateData } = useDashboard();
+  const { buildProjects, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterPlatform, setFilterPlatform] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -43,6 +43,7 @@ export default function BuildsPage() {
     setModalOpen(false);
   };
   const deleteBuild = (id: string) => { if (confirm("Delete this project?")) updateData({ buildProjects: buildProjects.filter((b: any) => b.id !== id) }); };
+  const duplicateBuild = async (id: string) => { const newId = await duplicateItem("buildProjects", id, { status: "ideation" }); if (newId) toast.success("Project duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
   const bulkDelete = useCallback(() => {
@@ -145,6 +146,7 @@ export default function BuildsPage() {
                 {bp.githubRepo && <a href={bp.githubRepo} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">📂 GitHub</a>}
                 {!bulk.bulkMode && (
                   <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => duplicateBuild(bp.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={13} /></button>
                     <button onClick={() => openEdit(bp)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
                     <button onClick={() => deleteBuild(bp.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
                   </div>

@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Flame, Plus, CheckCircle2, Circle, Trash2, Target, Calendar,
-    BarChart3, Trophy, Star, Zap, Edit2, RefreshCw, CheckSquare
+    BarChart3, Trophy, Star, Zap, Edit2, RefreshCw, CheckSquare, Copy
 } from "lucide-react";
 import type { HabitTracker } from "@/lib/db";
 import FormModal, { FormField, FormInput, FormSelect } from "@/components/FormModal";
@@ -21,7 +21,7 @@ const emptyForm = {
 };
 
 export default function HabitsPage() {
-    const { habits, addItem, updateItem, deleteItem } = useDashboard();
+    const { habits, addItem, updateItem, deleteItem, duplicateItem } = useDashboard();
     const [modalOpen, setModalOpen] = useState(false);
     const [editId, setEditId] = useState<string | null>(null);
     const [form, setForm] = useState<Omit<HabitTracker, "id">>(emptyForm);
@@ -69,6 +69,10 @@ export default function HabitsPage() {
         if (!confirm("Delete this habit and all its data?")) return;
         await deleteItem("habits", id);
         toast.success("Habit deleted");
+    };
+    const handleDuplicate = async (id: string) => {
+        const newId = await duplicateItem("habits", id, { completions: [], streak: 0 });
+        if (newId) toast.success("Habit duplicated");
     };
     const saveForm = async () => {
         if (!form.name.trim()) { toast.error("Name is required"); return; }
@@ -200,6 +204,7 @@ export default function HabitsPage() {
                                     </div>
                                     {!bulk.bulkMode && (
                                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                            <button onClick={() => handleDuplicate(h.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-colors" title="Duplicate"><Copy size={12} /></button>
                                             <button onClick={() => openEdit(h)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"><Edit2 size={12} /></button>
                                             <button onClick={() => handleDelete(h.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><Trash2 size={12} /></button>
                                         </div>

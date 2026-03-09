@@ -50,7 +50,7 @@ const fadeUp = (i: number) => ({
 // ─── Component ──────────────────────────────────────────────────────────────────
 
 export default function WebsitesPage() {
-  const { websites, updateData } = useDashboard();
+  const { websites, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -153,6 +153,11 @@ export default function WebsitesPage() {
 
   const deleteWebsite = (id: string) => {
     setPendingDeleteId(id);
+  };
+
+  const duplicateWebsite = async (id: string) => {
+    const newId = await duplicateItem("websites", id);
+    if (newId) toast.success("Website duplicated");
   };
 
   const confirmDeleteSingle = useCallback(() => {
@@ -393,6 +398,9 @@ export default function WebsitesPage() {
             <span className="flex items-center gap-1"><RefreshCw size={9} /> Updated {site.lastUpdated}</span>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={() => duplicateWebsite(site.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-all" title="Duplicate">
+              <Copy size={13} />
+            </button>
             <button onClick={() => openEdit(site)} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
               <Edit2 size={13} />
             </button>
@@ -462,6 +470,9 @@ export default function WebsitesPage() {
                 <Shield size={14} />
               </button>
             )}
+            <button onClick={() => duplicateWebsite(site.id)} className="p-2 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-all opacity-0 group-hover:opacity-100" title="Duplicate">
+              <Copy size={14} />
+            </button>
             <button onClick={() => openEdit(site)} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all opacity-0 group-hover:opacity-100">
               <Edit2 size={14} />
             </button>

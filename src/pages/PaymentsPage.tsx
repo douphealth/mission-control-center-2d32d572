@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw, CheckSquare } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw, CheckSquare, Copy } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect } from "@/components/FormModal";
 import type { Payment } from "@/lib/store";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ const statusBadge: Record<string, string> = { paid: "badge-success", pending: "b
 const emptyPayment: Omit<Payment, "id"> = { title: "", amount: 0, currency: "USD", type: "expense", status: "pending", category: "General", from: "", to: "", dueDate: new Date().toISOString().split("T")[0], paidDate: "", recurring: false, recurringInterval: "", linkedProject: "", notes: "", createdAt: new Date().toISOString().split("T")[0] };
 
 export default function PaymentsPage() {
-  const { payments, updateData } = useDashboard();
+  const { payments, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -50,6 +50,7 @@ export default function PaymentsPage() {
     updateData({ payments: payments.filter(p => p.id !== id) });
     toast.success("Payment deleted");
   };
+  const duplicatePayment = async (id: string) => { const newId = await duplicateItem("payments", id, { status: "pending", paidDate: "" }); if (newId) toast.success("Payment duplicated"); };
   const markPaid = (id: string) => {
     updateData({ payments: payments.map(p => p.id === id ? { ...p, status: "paid" as const, paidDate: new Date().toISOString().split("T")[0] } : p) });
     toast.success("Marked as paid");
@@ -179,6 +180,7 @@ export default function PaymentsPage() {
                   {(payment.status === "pending" || payment.status === "overdue") && (
                     <button onClick={() => markPaid(payment.id)} className="text-[11px] text-success hover:underline px-1.5">Pay</button>
                   )}
+                  <button onClick={() => duplicatePayment(payment.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={12} /></button>
                   <button onClick={() => openEdit(payment)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
                   <button onClick={() => deletePayment(payment.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
                 </div>
