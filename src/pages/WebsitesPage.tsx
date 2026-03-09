@@ -155,6 +155,11 @@ export default function WebsitesPage() {
     setPendingDeleteId(id);
   };
 
+  const duplicateWebsite = async (id: string) => {
+    const newId = await duplicateItem("websites", id);
+    if (newId) toast.success("Website duplicated");
+  };
+
   const confirmDeleteSingle = useCallback(() => {
     if (!pendingDeleteId) return;
     updateData({ websites: websites.filter(w => w.id !== pendingDeleteId) });
