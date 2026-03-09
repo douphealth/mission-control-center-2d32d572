@@ -334,6 +334,11 @@ function KanbanCard({
           </div>
           {/* Actions */}
           <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+            <button onClick={e => { e.stopPropagation(); onDuplicate(); }}
+              className="p-1.5 sm:p-1 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-colors touch-manipulation"
+              title="Duplicate">
+              <Copy size={12} />
+            </button>
             <button onClick={e => { e.stopPropagation(); onEdit(); }}
               className="p-1.5 sm:p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
               <Edit2 size={12} />
