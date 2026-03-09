@@ -11,7 +11,7 @@ import { toast } from "sonner";
 const emptyLink: Omit<LinkItem, "id"> = { title: "", url: "", category: "Tools", status: "active", description: "", dateAdded: new Date().toISOString().split("T")[0], pinned: false };
 
 export default function LinksPage() {
-  const { links, updateData } = useDashboard();
+  const { links, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
