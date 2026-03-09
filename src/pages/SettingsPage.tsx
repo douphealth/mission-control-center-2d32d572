@@ -71,12 +71,9 @@ export default function SettingsPage() {
   const [sbConnected, setSbConnected] = useState(isSupabaseConnected());
   const [sbTesting, setSbTesting] = useState(false);
   const [sbTestResult, setSbTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [sbSyncing, setSbSyncing] = useState<null | 'push' | 'pull'>(null);
+  const [sbSyncing, setSbSyncing] = useState<null | 'sync' | 'refresh'>(null);
   const [sbLastSync, setSbLastSync] = useState<string | null>(null);
   const [showSchema, setShowSchema] = useState(false);
-  const [syncConfirm, setSyncConfirm] = useState<null | 'push' | 'pull'>(null);
-  const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
 
   // Security state
   const [encKey, setEncKey] = useState("");
@@ -99,7 +96,7 @@ export default function SettingsPage() {
     const blob = new Blob([data], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `mission-control-v8-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `mission-control-backup-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     toast.success("Backup downloaded");
   };
@@ -111,7 +108,10 @@ export default function SettingsPage() {
     reader.onload = async (ev) => {
       try {
         await importAllData(ev.target?.result as string);
-        toast.success("Data imported successfully");
+        if (isSupabaseConnected()) {
+          await fullSync();
+        }
+        toast.success("Backup imported and synced");
         setTimeout(() => window.location.reload(), 800);
       } catch {
         toast.error("Invalid file or import failed.");
@@ -153,39 +153,32 @@ export default function SettingsPage() {
     toast.info("Supabase disconnected");
   };
 
-  const handleSyncAction = async (action: 'push' | 'pull') => {
-    // Load preview first for confirmation
-    setLoadingPreview(true);
-    setSyncConfirm(action);
-    const preview = await getSyncPreview();
-    setSyncPreview(preview);
-    setLoadingPreview(false);
+  const handleSyncNow = async () => {
+    setSbSyncing('sync');
+    const result = await fullSync();
+    setSbSyncing(null);
+
+    if (result.success) {
+      toast.success(`✅ Synced ${result.pushed} pushed + ${result.pulled} pulled`);
+      setSbLastSync(new Date().toISOString());
+      return;
+    }
+
+    toast.error(`Sync failed: ${result.error}`);
   };
 
-  const executeSyncAction = async (action: 'push' | 'pull') => {
-    setSyncConfirm(null);
-    setSbSyncing(action);
+  const handleRefreshFromCloud = async () => {
+    setSbSyncing('refresh');
+    const result = await pullFromSupabase();
+    setSbSyncing(null);
 
-    if (action === 'push') {
-      const result = await pushToSupabase();
-      setSbSyncing(null);
-      if (result.success) {
-        toast.success(`✅ Saved ${result.synced} items to cloud`);
-        setSbLastSync(new Date().toISOString());
-      } else {
-        toast.error(`Save failed: ${result.error}`);
-      }
-    } else {
-      const result = await pullFromSupabase();
-      setSbSyncing(null);
-      if (result.success) {
-        toast.success(`✅ Restored ${result.added} new + ${result.updated} updated items from cloud`);
-        setSbLastSync(new Date().toISOString());
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        toast.error(`Restore failed: ${result.error}`);
-      }
+    if (result.success) {
+      toast.success(`✅ Refreshed ${result.added} new + ${result.updated} updated items from cloud`);
+      setSbLastSync(new Date().toISOString());
+      return;
     }
+
+    toast.error(`Refresh failed: ${result.error}`);
   };
 
   const handleGenerateEncKey = () => {
