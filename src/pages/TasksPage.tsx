@@ -887,6 +887,7 @@ export default function TasksPage() {
                 index={i}
                 onEdit={() => setModal({ open: true, task })}
                 onDelete={() => handleDelete(task.id)}
+                onDuplicate={() => handleDuplicate(task.id)}
                 onToggle={() => handleToggle(task.id)}
                 onToggleSub={(subId) => handleToggleSub(task.id, subId)}
               />
