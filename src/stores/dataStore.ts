@@ -150,6 +150,7 @@ export const useDataStore = create<DataState>((set, _get) => ({
         if (changes.sidebarCollapsed !== undefined) {
             useNavigationStore.getState().setSidebarCollapsed(changes.sidebarCollapsed);
         }
+        schedulePush();
     },
 
     // ─── Export ────────────────────────────────────────────────────────────────
@@ -199,6 +200,7 @@ export const useDataStore = create<DataState>((set, _get) => ({
         // Reload settings
         const { useSettingsStore } = await import('@/stores/settingsStore');
         await useSettingsStore.getState().loadSettings();
+        schedulePush();
     },
 
     // ─── Backward compat ──────────────────────────────────────────────────────

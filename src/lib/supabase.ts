@@ -3,6 +3,7 @@
 
 import { createClient, type SupabaseClient, type RealtimeChannel } from '@supabase/supabase-js';
 import { db } from './db';
+import { deduplicateAll } from './dedup';
 
 let supabaseClient: SupabaseClient | null = null;
 let realtimeChannel: RealtimeChannel | null = null;
@@ -22,8 +23,11 @@ export function getSupabaseConfig(): { url: string; anonKey: string } | null {
 export function setSupabaseConfig(url: string, anonKey: string): void {
     localStorage.setItem('mc-supabase-url', url.trim());
     localStorage.setItem('mc-supabase-anon-key', anonKey.trim());
+    if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
+        realtimeChannel = null;
+    }
     supabaseClient = null;
-    realtimeChannel = null;
 }
 
 export function clearSupabaseConfig(): void {
@@ -237,6 +241,7 @@ export async function pushToSupabase(): Promise<{ success: boolean; synced: numb
             tables: syncedTables,
         }]);
 
+        syncCallbacks.forEach(cb => cb());
         return { success: true, synced: totalSynced };
     } catch (e: any) {
         return { success: false, synced: totalSynced, error: e?.message };
@@ -293,7 +298,9 @@ export async function pullFromSupabase(): Promise<{ success: boolean; synced: nu
             tables: TABLE_MAP.map(t => t.remote),
         }]);
 
-        return { success: true, synced: totalAdded + totalUpdated, added: totalAdded, updated: totalUpdated };
+        const removedDuplicates = await deduplicateAll();
+        syncCallbacks.forEach(cb => cb());
+        return { success: true, synced: totalAdded + totalUpdated + removedDuplicates, added: totalAdded, updated: totalUpdated };
     } catch (e: any) {
         return { success: false, synced: 0, added: 0, updated: 0, error: e?.message };
     }
@@ -309,6 +316,37 @@ export async function fullSync(): Promise<{ success: boolean; pushed: number; pu
     if (!pullResult.success) return { success: false, pushed: pushResult.synced, pulled: 0, error: `Pull failed: ${pullResult.error}` };
 
     return { success: true, pushed: pushResult.synced, pulled: pullResult.synced };
+}
+
+// ─── Real-time listeners ───────────────────────────────────────────────────────
+
+export function startRealtimeSync(onRemoteChange?: () => void): boolean {
+    const client = getSupabase();
+    if (!client) return false;
+    if (realtimeChannel) return true;
+
+    const remoteTables = [...TABLE_MAP.map(t => t.remote), 'mc_settings'];
+    let channel = client.channel('mission-control-realtime-sync');
+
+    for (const table of remoteTables) {
+        channel = channel.on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table },
+            () => {
+                onRemoteChange?.();
+                syncCallbacks.forEach(cb => cb());
+            }
+        );
+    }
+
+    realtimeChannel = channel.subscribe();
+    return true;
+}
+
+export function stopRealtimeSync(): void {
+    if (!realtimeChannel) return;
+    realtimeChannel.unsubscribe();
+    realtimeChannel = null;
 }
 
 // ─── Register callback for sync events ────────────────────────────────────────

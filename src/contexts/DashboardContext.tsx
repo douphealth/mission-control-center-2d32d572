@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useDataStore } from '@/stores/dataStore';
-import { isSupabaseConnected } from '@/lib/supabase';
+import { isSupabaseConnected, pullFromSupabase, startRealtimeSync, stopRealtimeSync } from '@/lib/supabase';
 import { deduplicateAll } from '@/lib/dedup';
 
 // Re-export types for convenience
@@ -182,9 +182,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         await migrateFromLocalStorage();
 
-        // NOTE: We do NOT auto-pull from Supabase on init.
-        // Auto-push (in dataStore) keeps the cloud in sync as a backup.
-        // Restoring from cloud is an explicit user action only.
+        // Always hydrate local DB from cloud first when connected,
+        // so this device shows the latest shared state immediately.
+        if (isSupabaseConnected()) {
+          await pullFromSupabase();
+        }
 
         await seedDefaults();
         // ─── Deduplicate all tables after migration/seeding ──────────────────────
@@ -203,6 +205,41 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, [loadSettings, setIsLoading, setDashboardLayout]);
+
+  // Continuous cloud pull for cross-device consistency (realtime + heartbeat)
+  useEffect(() => {
+    if (isLoading || !isSupabaseConnected()) return;
+
+    let pulling = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const safePull = async () => {
+      if (pulling) return;
+      pulling = true;
+      try {
+        await pullFromSupabase();
+      } finally {
+        pulling = false;
+      }
+    };
+
+    startRealtimeSync(() => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        void safePull();
+      }, 900);
+    });
+
+    const heartbeat = setInterval(() => {
+      void safePull();
+    }, 15000);
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      clearInterval(heartbeat);
+      stopRealtimeSync();
+    };
+  }, [isLoading]);
 
   // Live queries — reactive to DB changes (must be in React component)
   const websites = useLiveQuery(() => db.websites.toArray(), []) ?? [];

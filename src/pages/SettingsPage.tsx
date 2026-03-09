@@ -9,9 +9,8 @@ import {
 } from "lucide-react";
 import {
   getSupabaseConfig, setSupabaseConfig, clearSupabaseConfig,
-  testSupabaseConnection, pushToSupabase, pullFromSupabase,
-  isSupabaseConnected, SUPABASE_SCHEMA_SQL, getLastSyncTime,
-  type SyncPreview, getSyncPreview
+  testSupabaseConnection, pullFromSupabase, fullSync,
+  isSupabaseConnected, SUPABASE_SCHEMA_SQL, getLastSyncTime
 } from "@/lib/supabase";
 import { generateStrongKey, setEncryptionKey, hasCustomEncryptionKey } from "@/lib/encryption";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
@@ -72,12 +71,9 @@ export default function SettingsPage() {
   const [sbConnected, setSbConnected] = useState(isSupabaseConnected());
   const [sbTesting, setSbTesting] = useState(false);
   const [sbTestResult, setSbTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [sbSyncing, setSbSyncing] = useState<null | 'push' | 'pull'>(null);
+  const [sbSyncing, setSbSyncing] = useState<null | 'sync' | 'refresh'>(null);
   const [sbLastSync, setSbLastSync] = useState<string | null>(null);
   const [showSchema, setShowSchema] = useState(false);
-  const [syncConfirm, setSyncConfirm] = useState<null | 'push' | 'pull'>(null);
-  const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
 
   // Security state
   const [encKey, setEncKey] = useState("");
@@ -100,7 +96,7 @@ export default function SettingsPage() {
     const blob = new Blob([data], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `mission-control-v8-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `mission-control-backup-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     toast.success("Backup downloaded");
   };
@@ -112,7 +108,10 @@ export default function SettingsPage() {
     reader.onload = async (ev) => {
       try {
         await importAllData(ev.target?.result as string);
-        toast.success("Data imported successfully");
+        if (isSupabaseConnected()) {
+          await fullSync();
+        }
+        toast.success("Backup imported and synced");
         setTimeout(() => window.location.reload(), 800);
       } catch {
         toast.error("Invalid file or import failed.");
@@ -154,39 +153,32 @@ export default function SettingsPage() {
     toast.info("Supabase disconnected");
   };
 
-  const handleSyncAction = async (action: 'push' | 'pull') => {
-    // Load preview first for confirmation
-    setLoadingPreview(true);
-    setSyncConfirm(action);
-    const preview = await getSyncPreview();
-    setSyncPreview(preview);
-    setLoadingPreview(false);
+  const handleSyncNow = async () => {
+    setSbSyncing('sync');
+    const result = await fullSync();
+    setSbSyncing(null);
+
+    if (result.success) {
+      toast.success(`✅ Synced ${result.pushed} pushed + ${result.pulled} pulled`);
+      setSbLastSync(new Date().toISOString());
+      return;
+    }
+
+    toast.error(`Sync failed: ${result.error}`);
   };
 
-  const executeSyncAction = async (action: 'push' | 'pull') => {
-    setSyncConfirm(null);
-    setSbSyncing(action);
+  const handleRefreshFromCloud = async () => {
+    setSbSyncing('refresh');
+    const result = await pullFromSupabase();
+    setSbSyncing(null);
 
-    if (action === 'push') {
-      const result = await pushToSupabase();
-      setSbSyncing(null);
-      if (result.success) {
-        toast.success(`✅ Saved ${result.synced} items to cloud`);
-        setSbLastSync(new Date().toISOString());
-      } else {
-        toast.error(`Save failed: ${result.error}`);
-      }
-    } else {
-      const result = await pullFromSupabase();
-      setSbSyncing(null);
-      if (result.success) {
-        toast.success(`✅ Restored ${result.added} new + ${result.updated} updated items from cloud`);
-        setSbLastSync(new Date().toISOString());
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        toast.error(`Restore failed: ${result.error}`);
-      }
+    if (result.success) {
+      toast.success(`✅ Refreshed ${result.added} new + ${result.updated} updated items from cloud`);
+      setSbLastSync(new Date().toISOString());
+      return;
     }
+
+    toast.error(`Refresh failed: ${result.error}`);
   };
 
   const handleGenerateEncKey = () => {
@@ -612,11 +604,11 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Cloud Backup Actions */}
+                {/* Cloud Sync Actions */}
                 {sbConnected && (
                   <div className="card-elevated p-6 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h2 className="font-semibold text-lg">Cloud Backup</h2>
+                      <h2 className="font-semibold text-lg">Live Cloud Sync</h2>
                       <span className="text-[10px] font-medium text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-lg flex items-center gap-1">
                         <CheckCircle2 size={10} /> Auto-Save Active
                       </span>
@@ -625,135 +617,41 @@ export default function SettingsPage() {
                     <div className="flex items-start gap-2 p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/15">
                       <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
                       <div className="text-xs text-muted-foreground leading-relaxed">
-                        <strong className="text-foreground">Auto-save is always on.</strong> Every change you make is automatically backed up to the cloud within seconds. No manual action needed.
+                        <strong className="text-foreground">Always-on live sync.</strong> Changes are auto-saved to cloud and auto-refreshed on every device. Use Export/Import below only for version snapshots.
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Save to Cloud — push only */}
-                      <button onClick={() => handleSyncAction('push')} disabled={!!sbSyncing}
+                      <button onClick={handleSyncNow} disabled={!!sbSyncing}
                         className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 transition-all text-left group">
                         <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0 transition-transform group-hover:scale-105">
-                          {sbSyncing === 'push' ? <Loader2 size={18} className="text-primary-foreground animate-spin" /> : <ArrowUp size={18} className="text-primary-foreground" />}
+                          {sbSyncing === 'sync' ? <Loader2 size={18} className="text-primary-foreground animate-spin" /> : <ArrowUpDown size={18} className="text-primary-foreground" />}
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-bold text-foreground">Save to Cloud</div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5">Push all local data to the cloud now</div>
+                          <div className="text-sm font-bold text-foreground">Sync Now</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">Run immediate two-way sync (push + pull)</div>
                         </div>
                       </button>
 
-                      {/* Restore from Cloud — pull only, with warning */}
-                      <button onClick={() => handleSyncAction('pull')} disabled={!!sbSyncing}
-                        className="flex items-center gap-3 p-4 rounded-2xl bg-secondary/30 border-2 border-border/30 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all text-left group">
+                      <button onClick={handleRefreshFromCloud} disabled={!!sbSyncing}
+                        className="flex items-center gap-3 p-4 rounded-2xl bg-secondary/30 border-2 border-border/30 hover:border-border/60 hover:bg-secondary/50 transition-all text-left group">
                         <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                          {sbSyncing === 'pull' ? <Loader2 size={18} className="text-foreground animate-spin" /> : <ArrowDown size={18} className="text-muted-foreground" />}
+                          {sbSyncing === 'refresh' ? <Loader2 size={18} className="text-foreground animate-spin" /> : <ArrowDown size={18} className="text-muted-foreground" />}
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-bold text-foreground">Restore from Cloud</div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5">Overwrites local data with cloud backup</div>
+                          <div className="text-sm font-bold text-foreground">Refresh From Cloud</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">Pull latest cloud changes to this device</div>
                         </div>
                       </button>
                     </div>
 
                     {sbLastSync && (
                       <div className="text-[11px] text-muted-foreground text-center">
-                        Last manual save: {new Date(sbLastSync).toLocaleString()}
+                        Last cloud sync: {new Date(sbLastSync).toLocaleString()}
                       </div>
                     )}
                   </div>
                 )}
-
-                {/* Sync Confirmation Dialog */}
-                <AnimatePresence>
-                  {syncConfirm && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-foreground/40 backdrop-blur-sm p-0 sm:p-4"
-                      onClick={() => setSyncConfirm(null)}
-                    >
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        onClick={e => e.stopPropagation()}
-                        className="w-full sm:max-w-md bg-card rounded-t-2xl sm:rounded-2xl border border-border/40 shadow-2xl overflow-hidden"
-                      >
-                        <div className="p-5 sm:p-6 space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${syncConfirm === 'pull' ? 'bg-amber-500/10' : 'bg-primary/10'}`}>
-                              {syncConfirm === 'push' ? <ArrowUp size={18} className="text-primary" /> : <ArrowDown size={18} className="text-amber-500" />}
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-foreground">
-                                {syncConfirm === 'push' ? 'Save to Cloud' : 'Restore from Cloud'}
-                              </h3>
-                              <p className="text-xs text-muted-foreground">
-                                {syncConfirm === 'push' ? 'Back up your local data to the cloud' : 'Download cloud data to this device'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {loadingPreview ? (
-                            <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
-                              <Loader2 size={16} className="animate-spin" /> Analyzing data...
-                            </div>
-                          ) : syncPreview && (
-                            <div className="space-y-3">
-                              {syncConfirm === 'push' ? (
-                                <>
-                                  <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1">
-                                    <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                                      <ArrowUp size={12} /> {syncPreview.totalPush} items will be saved
-                                    </div>
-                                    <div className="text-[11px] text-muted-foreground">
-                                      Your current local data will be safely backed up to the cloud.
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 p-2 rounded-lg">
-                                    <CheckCircle2 size={12} className="shrink-0" />
-                                    Safe operation — cloud data is overwritten with your latest local data.
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
-                                    <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                                      <AlertTriangle size={12} /> Warning: This will overwrite your local data
-                                    </div>
-                                    <div className="text-[11px] text-muted-foreground">
-                                      All your current local edits will be replaced with the cloud backup. Use this only if you want to restore a previous version.
-                                    </div>
-                                  </div>
-                                  <div className="p-3 rounded-xl bg-secondary/60 border border-border/20 space-y-1">
-                                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                      <ArrowDown size={12} /> {syncPreview.totalPullNew} new + {syncPreview.totalPullUpdate} existing items from cloud
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 px-5 sm:px-6 py-4 border-t border-border/20 bg-secondary/20 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
-                          <button onClick={() => setSyncConfirm(null)} className="btn-secondary text-sm flex-1">
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => executeSyncAction(syncConfirm)}
-                            disabled={loadingPreview}
-                            className={`text-sm flex-1 gap-2 ${syncConfirm === 'pull' ? 'btn-primary bg-amber-500 hover:bg-amber-600 border-amber-500' : 'btn-primary'}`}
-                          >
-                            {syncConfirm === 'push' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                            {syncConfirm === 'push' ? 'Save Now' : 'Restore Now'}
-                          </button>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
                 {/* Schema */}
                 <div className="card-elevated p-6 space-y-3">
