@@ -493,8 +493,8 @@ function KanbanColumn({
 
 // ─── List Row ─────────────────────────────────────────────────────────────────
 
-function ListRow({ task, onEdit, onDelete, onToggle, onToggleSub, index }: {
-  task: Task; onEdit: () => void; onDelete: () => void; onToggle: () => void;
+function ListRow({ task, onEdit, onDelete, onDuplicate, onToggle, onToggleSub, index }: {
+  task: Task; onEdit: () => void; onDelete: () => void; onDuplicate: () => void; onToggle: () => void;
   onToggleSub: (sub: string) => void; index: number;
 }) {
   const pr = getPriority(task.priority);
