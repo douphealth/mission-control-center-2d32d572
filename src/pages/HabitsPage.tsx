@@ -70,6 +70,10 @@ export default function HabitsPage() {
         await deleteItem("habits", id);
         toast.success("Habit deleted");
     };
+    const handleDuplicate = async (id: string) => {
+        const newId = await duplicateItem("habits", id, { completions: [], streak: 0 });
+        if (newId) toast.success("Habit duplicated");
+    };
     const saveForm = async () => {
         if (!form.name.trim()) { toast.error("Name is required"); return; }
         if (editId) { await updateItem<HabitTracker>("habits", editId, form); toast.success("Habit updated"); }
