@@ -23,8 +23,11 @@ export function getSupabaseConfig(): { url: string; anonKey: string } | null {
 export function setSupabaseConfig(url: string, anonKey: string): void {
     localStorage.setItem('mc-supabase-url', url.trim());
     localStorage.setItem('mc-supabase-anon-key', anonKey.trim());
+    if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
+        realtimeChannel = null;
+    }
     supabaseClient = null;
-    realtimeChannel = null;
 }
 
 export function clearSupabaseConfig(): void {
