@@ -3,6 +3,7 @@
 
 import { createClient, type SupabaseClient, type RealtimeChannel } from '@supabase/supabase-js';
 import { db } from './db';
+import { deduplicateAll } from './dedup';
 
 let supabaseClient: SupabaseClient | null = null;
 let realtimeChannel: RealtimeChannel | null = null;
