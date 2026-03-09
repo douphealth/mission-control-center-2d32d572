@@ -53,6 +53,7 @@ export default function IdeasPage() {
     updateData({ ideas: ideas.filter(i => i.id !== id) });
     toast.success("Idea deleted");
   };
+  const duplicateIdea = async (id: string) => { const newId = await duplicateItem("ideas", id, { votes: 0 }); if (newId) toast.success("Idea duplicated"); };
   const upvote = (id: string) => {
     updateData({ ideas: ideas.map(i => i.id === id ? { ...i, votes: i.votes + 1 } : i) });
   };
