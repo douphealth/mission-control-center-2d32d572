@@ -59,7 +59,7 @@ function MaskedField({ value, label, isVisible, onReveal, onCopy, isMasterLocked
 }
 
 export default function CredentialsPage() {
-  const { credentials, addItem, updateItem, deleteItem } = useDashboard();
+  const { credentials, addItem, updateItem, deleteItem, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
