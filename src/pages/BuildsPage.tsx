@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Trash2, Plus, Edit2, Search, CheckSquare, Copy, Copy } from "lucide-react";
+import { ExternalLink, Trash2, Plus, Edit2, Search, CheckSquare, Copy } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { BuildProject } from "@/lib/db";
 import { useBulkActions } from "@/hooks/useBulkActions";
