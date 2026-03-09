@@ -679,6 +679,11 @@ export default function TasksPage() {
     toast.success("Task deleted");
   }, [deleteItem]);
 
+  const handleDuplicate = useCallback(async (id: string) => {
+    const newId = await duplicateItem("tasks", id, { status: "todo", completedAt: undefined });
+    if (newId) toast.success("Task duplicated ✓");
+  }, [duplicateItem]);
+
   const handleToggle = useCallback(async (id: string) => {
     const t = tasks.find(x => x.id === id);
     if (!t) return;
