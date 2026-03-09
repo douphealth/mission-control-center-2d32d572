@@ -18,7 +18,7 @@ const statusOrder: Record<string, number> = { ideation: 0, building: 1, testing:
 const emptyBuild: Omit<BuildProject, "id"> = { name: "", platform: "bolt", projectUrl: "", deployedUrl: "", description: "", techStack: [], status: "ideation", startedDate: new Date().toISOString().split("T")[0], lastWorkedOn: new Date().toISOString().split("T")[0], nextSteps: "", githubRepo: "" };
 
 export default function BuildsPage() {
-  const { buildProjects, upda, duplicateItemteData } = useDashboard();
+  const { buildProjects, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterPlatform, setFilterPlatform] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);

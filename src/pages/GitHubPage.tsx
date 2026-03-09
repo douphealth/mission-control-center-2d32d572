@@ -14,7 +14,7 @@ const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScri
 const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0], devPlatformUrl: "", deploymentUrl: "" };
 
 export default function GitHubPage() {
-  const { repos, upda, duplicateItemteData } = useDashboard();
+  const { repos, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
