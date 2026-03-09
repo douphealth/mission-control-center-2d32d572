@@ -223,16 +223,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    startRealtimeSync(() => {
+    const realtimeStarted = startRealtimeSync(() => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         void safePull();
       }, 900);
     });
 
-    const heartbeat = setInterval(() => {
+    // Fallback polling only if realtime is unavailable
+    const heartbeat = !realtimeStarted ? setInterval(() => {
       void safePull();
-    }, 15000);
+    }, 60000) : null;
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
