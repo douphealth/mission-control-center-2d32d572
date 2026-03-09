@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles, CheckSquare, Copy } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ThumbsUp, Lightbulb, Rocket, FlaskConical, ParkingCircle, Sparkles, CheckSquare, Copym "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { Idea } from "@/lib/store";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ const priorityDot: Record<string, string> = { high: "bg-destructive", medium: "b
 const emptyIdea: Omit<Idea, "id"> = { title: "", description: "", category: "General", priority: "medium", status: "spark", tags: [], linkedProject: "", votes: 0, createdAt: new Date().toISOString().split("T")[0], updatedAt: new Date().toISOString().split("T")[0] };
 
 export default function IdeasPage() {
-  const { ideas, upda, duplicateItemteData } = useDashboard();
+  const { ideas, upda, duplteData, duplicateItemseDashboard();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
