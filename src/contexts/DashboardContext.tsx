@@ -237,7 +237,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      clearInterval(heartbeat);
+      if (heartbeat) clearInterval(heartbeat);
       stopRealtimeSync();
     };
   }, [isLoading]);
