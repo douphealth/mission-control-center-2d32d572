@@ -38,6 +38,7 @@ export default function LinksPage() {
   };
   const togglePin = (id: string) => updateData({ links: links.map(l => l.id === id ? { ...l, pinned: !l.pinned } : l) });
   const deleteLink = (id: string) => updateData({ links: links.filter(l => l.id !== id) });
+  const duplicateLink = async (id: string) => { const newId = await duplicateItem("links", id); if (newId) toast.success("Link duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
   const bulkDelete = useCallback(() => {
