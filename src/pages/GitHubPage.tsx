@@ -37,6 +37,7 @@ export default function GitHubPage() {
     setModalOpen(false);
   };
   const deleteRepo = (id: string) => setPendingDeleteId(id);
+  const duplicateRepo = async (id: string) => { const newId = await duplicateItem("repos", id); if (newId) toast.success("Repo duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
   const closeDeleteDialog = useCallback(() => {
