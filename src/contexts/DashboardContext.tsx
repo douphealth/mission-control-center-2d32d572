@@ -182,9 +182,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       try {
         await migrateFromLocalStorage();
 
-        // NOTE: We do NOT auto-pull from Supabase on init.
-        // Auto-push (in dataStore) keeps the cloud in sync as a backup.
-        // Restoring from cloud is an explicit user action only.
+        // Always hydrate local DB from cloud first when connected,
+        // so this device shows the latest shared state immediately.
+        if (isSupabaseConnected()) {
+          await pullFromSupabase();
+        }
 
         await seedDefaults();
         // ─── Deduplicate all tables after migration/seeding ──────────────────────
