@@ -55,6 +55,11 @@ export default function NotesPage() {
     if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
   };
 
+  const duplicateNote = async (id: string) => {
+    const newId = await duplicateItem("notes", id);
+    if (newId) { toast.success("Note duplicated"); setSelectedId(newId); }
+  };
+
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
     if (!confirm(`Delete ${bulk.selectedCount} note(s)?`)) return;
