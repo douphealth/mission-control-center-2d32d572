@@ -43,6 +43,7 @@ export default function BuildsPage() {
     setModalOpen(false);
   };
   const deleteBuild = (id: string) => { if (confirm("Delete this project?")) updateData({ buildProjects: buildProjects.filter((b: any) => b.id !== id) }); };
+  const duplicateBuild = async (id: string) => { const newId = await duplicateItem("buildProjects", id, { status: "ideation" }); if (newId) toast.success("Project duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
   const bulkDelete = useCallback(() => {
