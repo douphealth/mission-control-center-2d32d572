@@ -141,6 +141,7 @@ export default function GitHubPage() {
               {repo.devPlatformUrl && <a href={repo.devPlatformUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Code2 size={12} /> Platform</a>}
               {repo.deploymentUrl && <a href={repo.deploymentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Rocket size={12} /> Deploy</a>}
               <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => duplicateRepo(repo.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={13} /></button>
                 <button onClick={() => openEdit(repo)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
                 <button onClick={() => deleteRepo(repo.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
               </div>

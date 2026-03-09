@@ -146,6 +146,7 @@ export default function BuildsPage() {
                 {bp.githubRepo && <a href={bp.githubRepo} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">📂 GitHub</a>}
                 {!bulk.bulkMode && (
                   <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => duplicateBuild(bp.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={13} /></button>
                     <button onClick={() => openEdit(bp)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
                     <button onClick={() => deleteBuild(bp.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
                   </div>
