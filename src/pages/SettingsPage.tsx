@@ -9,9 +9,8 @@ import {
 } from "lucide-react";
 import {
   getSupabaseConfig, setSupabaseConfig, clearSupabaseConfig,
-  testSupabaseConnection, pushToSupabase, pullFromSupabase,
-  isSupabaseConnected, SUPABASE_SCHEMA_SQL, getLastSyncTime,
-  type SyncPreview, getSyncPreview
+  testSupabaseConnection, pullFromSupabase, fullSync,
+  isSupabaseConnected, SUPABASE_SCHEMA_SQL, getLastSyncTime
 } from "@/lib/supabase";
 import { generateStrongKey, setEncryptionKey, hasCustomEncryptionKey } from "@/lib/encryption";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
