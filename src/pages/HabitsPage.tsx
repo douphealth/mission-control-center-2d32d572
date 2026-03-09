@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Flame, Plus, CheckCircle2, Circle, Trash2, Target, Calendar,
-    BarChart3, Trophy, Star, Zap, Edit2, RefreshCw, CheckSquare
+    BarChart3, Trophy, Star, Zap, Edit2, RefreshCw, CheckSquare, Copy
 } from "lucide-react";
 import type { HabitTracker } from "@/lib/db";
 import FormModal, { FormField, FormInput, FormSelect } from "@/components/FormModal";
