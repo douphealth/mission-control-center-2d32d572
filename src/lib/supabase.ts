@@ -40,6 +40,8 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 }
 
 // ─── Config management ─────────────────────────────────────────────────────────
+
+export function getSupabaseConfig(): { url: string; anonKey: string } | null {
     try {
         const url = localStorage.getItem('mc-supabase-url');
         const anonKey = localStorage.getItem('mc-supabase-anon-key');
