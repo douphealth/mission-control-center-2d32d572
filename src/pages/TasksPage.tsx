@@ -611,7 +611,7 @@ function ListRow({ task, onEdit, onDelete, onDuplicate, onToggle, onToggleSub, i
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TasksPage() {
-  const { tasks, addItem, updateItem, deleteItem } = useDashboard();
+  const { tasks, addItem, updateItem, deleteItem, duplicateItem } = useDashboard();
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [view, setView] = useState<"kanban" | "list">(isMobile ? "list" : "kanban");
