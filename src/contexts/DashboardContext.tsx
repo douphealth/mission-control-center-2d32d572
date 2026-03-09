@@ -206,6 +206,41 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [loadSettings, setIsLoading, setDashboardLayout]);
 
+  // Continuous cloud pull for cross-device consistency (realtime + heartbeat)
+  useEffect(() => {
+    if (isLoading || !isSupabaseConnected()) return;
+
+    let pulling = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const safePull = async () => {
+      if (pulling) return;
+      pulling = true;
+      try {
+        await pullFromSupabase();
+      } finally {
+        pulling = false;
+      }
+    };
+
+    startRealtimeSync(() => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        void safePull();
+      }, 900);
+    });
+
+    const heartbeat = setInterval(() => {
+      void safePull();
+    }, 15000);
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      clearInterval(heartbeat);
+      stopRealtimeSync();
+    };
+  }, [isLoading]);
+
   // Live queries — reactive to DB changes (must be in React component)
   const websites = useLiveQuery(() => db.websites.toArray(), []) ?? [];
   const tasks = useLiveQuery(() => db.tasks.toArray(), []) ?? [];
