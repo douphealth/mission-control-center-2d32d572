@@ -318,6 +318,37 @@ export async function fullSync(): Promise<{ success: boolean; pushed: number; pu
     return { success: true, pushed: pushResult.synced, pulled: pullResult.synced };
 }
 
+// ─── Real-time listeners ───────────────────────────────────────────────────────
+
+export function startRealtimeSync(onRemoteChange?: () => void): boolean {
+    const client = getSupabase();
+    if (!client) return false;
+    if (realtimeChannel) return true;
+
+    const remoteTables = [...TABLE_MAP.map(t => t.remote), 'mc_settings'];
+    let channel = client.channel('mission-control-realtime-sync');
+
+    for (const table of remoteTables) {
+        channel = channel.on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table },
+            () => {
+                onRemoteChange?.();
+                syncCallbacks.forEach(cb => cb());
+            }
+        );
+    }
+
+    realtimeChannel = channel.subscribe();
+    return true;
+}
+
+export function stopRealtimeSync(): void {
+    if (!realtimeChannel) return;
+    realtimeChannel.unsubscribe();
+    realtimeChannel = null;
+}
+
 // ─── Register callback for sync events ────────────────────────────────────────
 
 export function onSyncComplete(callback: () => void) {
