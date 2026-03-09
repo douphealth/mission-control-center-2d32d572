@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useDataStore } from '@/stores/dataStore';
-import { isSupabaseConnected } from '@/lib/supabase';
+import { isSupabaseConnected, pullFromSupabase, startRealtimeSync, stopRealtimeSync } from '@/lib/supabase';
 import { deduplicateAll } from '@/lib/dedup';
 
 // Re-export types for convenience
