@@ -151,6 +151,7 @@ export const useDataStore = create<DataState>((set, _get) => ({
             useNavigationStore.getState().setSidebarCollapsed(changes.sidebarCollapsed);
         }
         schedulePush();
+    },
 
     // ─── Export ────────────────────────────────────────────────────────────────
     exportAllData: async (): Promise<string> => {
