@@ -11,7 +11,35 @@ let syncCallbacks: (() => void)[] = [];
 
 const CLOUD_BASELINE_KEY = 'mc-cloud-baseline-ready';
 
-export function getSupabaseConfig(): { url: string; anonKey: string } | null {
+function hasCloudBaseline(): boolean {
+    try {
+        return localStorage.getItem(CLOUD_BASELINE_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function markCloudBaselineReady(): void {
+    try {
+        localStorage.setItem(CLOUD_BASELINE_KEY, '1');
+    } catch { }
+}
+
+function clearCloudBaseline(): void {
+    try {
+        localStorage.removeItem(CLOUD_BASELINE_KEY);
+    } catch { }
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+    return chunks;
+}
+
+// ─── Config management ─────────────────────────────────────────────────────────
     try {
         const url = localStorage.getItem('mc-supabase-url');
         const anonKey = localStorage.getItem('mc-supabase-anon-key');
