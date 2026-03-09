@@ -278,12 +278,13 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
 // ─── Kanban Card ──────────────────────────────────────────────────────────────
 
 function KanbanCard({
-  task, onEdit, onDelete, onToggle, onToggleSub,
+  task, onEdit, onDelete, onDuplicate, onToggle, onToggleSub,
   isDragging, onDragStart, onDragEnd,
 }: {
   task: Task;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
   onToggle: () => void;
   onToggleSub: (subId: string) => void;
   isDragging: boolean;
