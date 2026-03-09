@@ -261,7 +261,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     userName, userRole, theme, sidebarCollapsed, dashboardLayout,
     activeSection, setActiveSection, sidebarOpen, setSidebarOpen,
     toggleTheme, setTheme,
-    addItem, updateItem, deleteItem, bulkAddItems,
+    addItem, updateItem, deleteItem, duplicateItem, bulkAddItems,
     updateSettings, saveDashboardLayout,
     isLoading,
     exportAllData, importAllData,
