@@ -17,7 +17,7 @@ const colorMap: Record<string, { border: string; dot: string }> = {
 };
 
 export default function NotesPage() {
-  const { notes, upda, duplteData, duplicateItemseDashboard();
+  const { notes, updateData, duplicateItem } = useDashboard();
   const [selectedId, setSelectedId] = useState<string | null>(notes[0]?.id ?? null);
   const [search, setSearch] = useState("");
   const bulk = useBulkActions<typeof notes[0]>();

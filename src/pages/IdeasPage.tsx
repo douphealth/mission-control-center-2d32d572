@@ -21,7 +21,7 @@ const priorityDot: Record<string, string> = { high: "bg-destructive", medium: "b
 const emptyIdea: Omit<Idea, "id"> = { title: "", description: "", category: "General", priority: "medium", status: "spark", tags: [], linkedProject: "", votes: 0, createdAt: new Date().toISOString().split("T")[0], updatedAt: new Date().toISOString().split("T")[0] };
 
 export default function IdeasPage() {
-  const { ideas, upda, duplteData, duplicateItemseDashboard();
+  const { ideas, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);

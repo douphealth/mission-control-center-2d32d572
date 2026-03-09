@@ -14,7 +14,7 @@ const statusBadge: Record<string, string> = { paid: "badge-success", pending: "b
 const emptyPayment: Omit<Payment, "id"> = { title: "", amount: 0, currency: "USD", type: "expense", status: "pending", category: "General", from: "", to: "", dueDate: new Date().toISOString().split("T")[0], paidDate: "", recurring: false, recurringInterval: "", linkedProject: "", notes: "", createdAt: new Date().toISOString().split("T")[0] };
 
 export default function PaymentsPage() {
-  const { payments, upda, duplteData, duplicateItemseDashboard();
+  const { payments, updateData, duplicateItem } = useDashboard();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
