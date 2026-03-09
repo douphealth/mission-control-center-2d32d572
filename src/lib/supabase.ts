@@ -236,24 +236,42 @@ export async function getSyncPreview(): Promise<SyncPreview | null> {
     };
 }
 
-// ─── Push local → Supabase (upsert, never deletes cloud data) ────────────────
+// ─── Push local → Supabase (upsert + optional mirror delete) ─────────────────
 
-export async function pushToSupabase(): Promise<{ success: boolean; synced: number; error?: string }> {
+export async function pushToSupabase(options?: { mirrorDeletes?: boolean }): Promise<{ success: boolean; synced: number; error?: string }> {
     const client = getSupabase();
     if (!client) return { success: false, synced: 0, error: 'Not connected' };
 
+    const mirrorDeletes = options?.mirrorDeletes ?? hasCloudBaseline();
     let totalSynced = 0;
     const syncedTables: string[] = [];
 
     try {
         for (const { local, remote } of TABLE_MAP) {
             const items = await local.toArray();
-            if (items.length === 0) continue;
+            const localIds = new Set(items.map((item: any) => item.id));
 
-            const rows = items.map((item: any) => ({ id: item.id, data: item }));
-            const { error } = await client.from(remote).upsert(rows, { onConflict: 'id' });
-            if (error) throw new Error(`${remote}: ${error.message}`);
-            totalSynced += items.length;
+            if (items.length > 0) {
+                const rows = items.map((item: any) => ({ id: item.id, data: item }));
+                const { error } = await client.from(remote).upsert(rows, { onConflict: 'id' });
+                if (error) throw new Error(`${remote}: ${error.message}`);
+                totalSynced += items.length;
+            }
+
+            if (mirrorDeletes) {
+                const { data: remoteRows, error: remoteErr } = await client.from(remote).select('id');
+                if (remoteErr) throw new Error(`${remote}: ${remoteErr.message}`);
+
+                const toDelete = (remoteRows ?? [])
+                    .map((row: any) => row.id as string)
+                    .filter((id: string) => !localIds.has(id));
+
+                for (const batch of chunkArray(toDelete, 500)) {
+                    const { error: delErr } = await client.from(remote).delete().in('id', batch);
+                    if (delErr) throw new Error(`${remote}: ${delErr.message}`);
+                }
+            }
+
             syncedTables.push(remote);
         }
 
@@ -269,7 +287,7 @@ export async function pushToSupabase(): Promise<{ success: boolean; synced: numb
 
         // Log sync
         await client.from('mc_sync_log').insert([{
-            direction: 'push',
+            direction: mirrorDeletes ? 'push_mirror' : 'push',
             tables: syncedTables,
         }]);
 
