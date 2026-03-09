@@ -241,6 +241,7 @@ export async function pushToSupabase(): Promise<{ success: boolean; synced: numb
             tables: syncedTables,
         }]);
 
+        syncCallbacks.forEach(cb => cb());
         return { success: true, synced: totalSynced };
     } catch (e: any) {
         return { success: false, synced: totalSynced, error: e?.message };
