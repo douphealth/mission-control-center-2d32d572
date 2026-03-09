@@ -865,6 +865,7 @@ export default function TasksPage() {
               tasks={tasksByStatus[status.id] || []}
               onEdit={t => setModal({ open: true, task: t })}
               onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
               onToggle={handleToggle}
               onToggleSub={handleToggleSub}
               onAddNew={() => setModal({ open: true, task: null, defaultStatus: status.id })}
