@@ -5,10 +5,11 @@ import {
   Plus, Search, CheckCircle2, Circle, AlertTriangle, Edit2, Trash2,
   GripVertical, ChevronDown, LayoutGrid, List, Flag, Tag, Calendar,
   X, Clock, ArrowRight, Zap, Target, Flame, Filter, MoreHorizontal,
-  CheckSquare, Layers, TrendingUp, BarChart3, Copy
+  CheckSquare, Layers, TrendingUp, BarChart3, Copy, Bell
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Task } from "@/lib/db";
+import { REMINDER_LABELS, requestNotificationPermission } from "@/lib/notifications";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
