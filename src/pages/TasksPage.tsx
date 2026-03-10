@@ -53,6 +53,7 @@ const EMPTY: Omit<Task, "id"> = {
   dueDate: today, category: "General",
   description: "", linkedProject: "",
   subtasks: [], createdAt: today,
+  reminder: 'none', reminderFired: false,
 };
 
 interface TaskModalProps {
