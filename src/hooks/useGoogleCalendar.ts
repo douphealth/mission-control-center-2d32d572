@@ -113,9 +113,9 @@ export function useGoogleCalendar(opts?: {
             const tasksToPush = allTasks.filter(t => t.dueDate && !t.gcalEventId);
             if (tasksToPush.length > 0) {
                 const pushed = await pushTasksToGCal(tasksToPush);
-                // Update local tasks with their gcalEventId
+                // Update local tasks with their gcalEventId — use store to trigger Supabase sync
                 for (const [taskId, gcalId] of pushed) {
-                    await db.tasks.update(taskId, { gcalEventId: gcalId });
+                    await storeUpdateItem('tasks', taskId, { gcalEventId: gcalId });
                 }
                 if (pushed.size > 0) {
                     console.log(`📤 Pushed ${pushed.size} tasks to Google Calendar`);
