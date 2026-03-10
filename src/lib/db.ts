@@ -47,6 +47,10 @@ export interface Task {
     gcalEventId?: string; // Google Calendar event ID if pushed
     reminder?: 'none' | 'at-time' | '5min' | '15min' | '30min' | '1hr' | '2hr' | '1day';
     reminderFired?: boolean; // prevents re-firing
+    /** Multiple reminders — each entry is a preset key or 'custom:MINUTES' */
+    reminders?: string[];
+    /** Tracks which reminders have fired (by index or key) */
+    remindersFired?: string[];
 }
 
 export interface GitHubRepo {

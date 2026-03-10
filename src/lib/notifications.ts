@@ -28,6 +28,37 @@ const REMINDER_LABELS: Record<string, string> = {
 
 export { REMINDER_LABELS };
 
+/** Get a human-readable label for any reminder key (including custom) */
+export function getReminderLabel(key: string): string {
+  if (REMINDER_LABELS[key]) return REMINDER_LABELS[key];
+  if (key.startsWith('custom:')) {
+    const mins = parseInt(key.split(':')[1], 10);
+    if (isNaN(mins)) return key;
+    if (mins < 60) return `${mins} minutes before`;
+    if (mins === 60) return '1 hour before';
+    if (mins < 1440) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return m ? `${h}h ${m}m before` : `${h} hours before`;
+    }
+    const d = Math.floor(mins / 1440);
+    const rem = mins % 1440;
+    if (rem === 0) return `${d} day${d > 1 ? 's' : ''} before`;
+    return `${d}d ${Math.floor(rem / 60)}h before`;
+  }
+  return key;
+}
+
+/** Get offset in ms for a reminder key */
+function getOffsetMs(key: string): number {
+  if (REMINDER_OFFSETS[key] !== undefined) return REMINDER_OFFSETS[key];
+  if (key.startsWith('custom:')) {
+    const mins = parseInt(key.split(':')[1], 10);
+    if (!isNaN(mins)) return mins * 60_000;
+  }
+  return 0;
+}
+
 /** Request browser notification permission (call once on user action) */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) return false;
@@ -37,42 +68,33 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return result === 'granted';
 }
 
-/** Get the exact trigger time for a task's reminder */
-function getReminderTime(task: Task): number | null {
-  if (!task.reminder || task.reminder === 'none' || !task.dueDate) return null;
-
-  const offset = REMINDER_OFFSETS[task.reminder] ?? 0;
-
-  // Build the due datetime
-  const dateStr = task.dueDate; // YYYY-MM-DD
+/** Get the due datetime in ms */
+function getDueMs(task: Task): number | null {
+  if (!task.dueDate) return null;
+  const dateStr = task.dueDate;
   const timeStr = task.allDay === false && task.startTime ? task.startTime : '09:00';
   const dueMs = new Date(`${dateStr}T${timeStr}`).getTime();
-  if (isNaN(dueMs)) return null;
-
-  return dueMs - offset;
+  return isNaN(dueMs) ? null : dueMs;
 }
 
 /** Fire a notification (browser + in-app toast) */
-function fireNotification(task: Task) {
-  const label = REMINDER_LABELS[task.reminder || 'at-time'];
+function fireNotification(task: Task, label: string) {
   const body = `${label} — ${task.title}`;
 
-  // In-app toast
   toast.info(`🔔 Reminder: ${task.title}`, {
     description: label,
     duration: 10_000,
   });
 
-  // Browser push notification
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
       new Notification('Mission Control Reminder', {
         body,
         icon: '/favicon.ico',
-        tag: `task-${task.id}`,
+        tag: `task-${task.id}-${Date.now()}`,
       });
     } catch {
-      // Fallback: some browsers block Notification constructor
+      // Fallback
     }
   }
 }
@@ -90,15 +112,45 @@ export function startNotificationLoop() {
 
       for (const task of tasks) {
         if (task.status === 'done') continue;
+
+        // ── New multi-reminder system ──
+        const reminders = task.reminders;
+        if (reminders && reminders.length > 0) {
+          const dueMs = getDueMs(task);
+          if (!dueMs) continue;
+
+          const fired = new Set(task.remindersFired || []);
+          let newFired = false;
+
+          for (const key of reminders) {
+            if (key === 'none' || fired.has(key)) continue;
+            const offset = getOffsetMs(key);
+            const triggerAt = dueMs - offset;
+
+            if (now >= triggerAt) {
+              fireNotification(task, getReminderLabel(key));
+              fired.add(key);
+              newFired = true;
+            }
+          }
+
+          if (newFired) {
+            await db.tasks.update(task.id, { remindersFired: Array.from(fired) });
+          }
+          continue;
+        }
+
+        // ── Legacy single-reminder fallback ──
         if (!task.reminder || task.reminder === 'none') continue;
         if (task.reminderFired) continue;
 
-        const triggerAt = getReminderTime(task);
-        if (triggerAt === null) continue;
+        const dueMs = getDueMs(task);
+        if (!dueMs) continue;
+        const offset = REMINDER_OFFSETS[task.reminder] ?? 0;
+        const triggerAt = dueMs - offset;
 
         if (now >= triggerAt) {
-          fireNotification(task);
-          // Mark as fired so we don't re-fire
+          fireNotification(task, REMINDER_LABELS[task.reminder] || task.reminder);
           await db.tasks.update(task.id, { reminderFired: true });
         }
       }
@@ -107,7 +159,6 @@ export function startNotificationLoop() {
     }
   };
 
-  // Check every 30 seconds
   check();
   intervalId = setInterval(check, 30_000);
 }
