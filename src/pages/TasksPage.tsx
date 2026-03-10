@@ -428,7 +428,7 @@ function KanbanCard({
         </div>
         <div className="flex items-center gap-1.5">
           {task.reminder && task.reminder !== 'none' && (
-            <Bell size={10} className="text-primary/60" title={REMINDER_LABELS[task.reminder]} />
+            <span title={REMINDER_LABELS[task.reminder]}><Bell size={10} className="text-primary/60" /></span>
           )}
           <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
         </div>
