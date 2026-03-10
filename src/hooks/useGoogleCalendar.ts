@@ -20,7 +20,7 @@ import {
     type GoogleCalendarEvent,
     type GCalConfig,
 } from '@/lib/googleCalendar';
-import { db } from '@/lib/db';
+import { db, type Task } from '@/lib/db';
 import { useDataStore } from '@/stores/dataStore';
 
 export interface GCalSyncState {
