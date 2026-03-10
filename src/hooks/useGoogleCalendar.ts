@@ -15,6 +15,7 @@ import {
     gCalEventToCalEvent,
     loadGisScript,
     pushTasksToGCal,
+    taskIdToGCalId,
     type GoogleCalendarList,
     type GoogleCalendarEvent,
     type GCalConfig,
