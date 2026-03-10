@@ -45,6 +45,8 @@ export interface Task {
     endTime?: string;     // HH:MM — calendar time support
     allDay?: boolean;     // defaults to true if not set
     gcalEventId?: string; // Google Calendar event ID if pushed
+    reminder?: 'none' | 'at-time' | '5min' | '15min' | '30min' | '1hr' | '2hr' | '1day';
+    reminderFired?: boolean; // prevents re-firing
 }
 
 export interface GitHubRepo {
