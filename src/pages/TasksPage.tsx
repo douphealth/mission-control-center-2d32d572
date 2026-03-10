@@ -219,6 +219,30 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 )}
               </div>
 
+              {/* Reminder */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 flex items-center gap-1.5">
+                  <Bell size={12} className="text-primary" /> Reminder
+                </label>
+                <select
+                  value={form.reminder || 'none'}
+                  onChange={async (e) => {
+                    const val = e.target.value as Task['reminder'];
+                    uf("reminder", val);
+                    uf("reminderFired", false);
+                    if (val !== 'none') {
+                      const granted = await requestNotificationPermission();
+                      if (!granted) toast.info("Enable browser notifications for push alerts");
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none appearance-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {Object.entries(REMINDER_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Linked project */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Linked Project</label>
