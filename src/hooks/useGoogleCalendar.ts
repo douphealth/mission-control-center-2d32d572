@@ -20,7 +20,8 @@ import {
     type GoogleCalendarEvent,
     type GCalConfig,
 } from '@/lib/googleCalendar';
-import { db } from '@/lib/db';
+import { db, type Task } from '@/lib/db';
+import { useDataStore } from '@/stores/dataStore';
 
 export interface GCalSyncState {
     connected: boolean;
@@ -45,6 +46,7 @@ export function useGoogleCalendar(opts?: {
     const autoFetch = opts?.autoFetch ?? true;
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const syncLockRef = useRef(false);
+    const storeUpdateItem = useDataStore(s => s.updateItem);
 
     const [state, setState] = useState<GCalSyncState>(() => {
         const cfg = getGCalConfig();
@@ -111,9 +113,8 @@ export function useGoogleCalendar(opts?: {
             const tasksToPush = allTasks.filter(t => t.dueDate && !t.gcalEventId);
             if (tasksToPush.length > 0) {
                 const pushed = await pushTasksToGCal(tasksToPush);
-                // Update local tasks with their gcalEventId
                 for (const [taskId, gcalId] of pushed) {
-                    await db.tasks.update(taskId, { gcalEventId: gcalId });
+                    await storeUpdateItem<Task>('tasks', taskId, { gcalEventId: gcalId } as Partial<Task>);
                 }
                 if (pushed.size > 0) {
                     console.log(`📤 Pushed ${pushed.size} tasks to Google Calendar`);
@@ -162,7 +163,7 @@ export function useGoogleCalendar(opts?: {
                         (t.title || '').trim().toLowerCase() === rawTitle && t.dueDate === evDate && !t.gcalEventId
                     );
                     if (matchingTask) {
-                        db.tasks.update(matchingTask.id, { gcalEventId: ev.id }).catch(() => {});
+                        storeUpdateItem<Task>('tasks', matchingTask.id, { gcalEventId: ev.id } as Partial<Task>).catch(() => {});
                         pushedGCalIds.add(ev.id); // prevent future re-checks
                     }
                     return false;
@@ -193,7 +194,7 @@ export function useGoogleCalendar(opts?: {
         } finally {
             syncLockRef.current = false;
         }
-    }, [getTimeRange, state.calendars]);
+    }, [getTimeRange, state.calendars, storeUpdateItem]);
 
     // Connect to Google
     const connect = useCallback(async (clientId: string) => {
