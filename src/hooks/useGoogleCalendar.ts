@@ -21,6 +21,7 @@ import {
     type GCalConfig,
 } from '@/lib/googleCalendar';
 import { db } from '@/lib/db';
+import { useDataStore } from '@/stores/dataStore';
 
 export interface GCalSyncState {
     connected: boolean;
