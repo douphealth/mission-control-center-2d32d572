@@ -414,7 +414,20 @@ export async function fetchAllEvents(
 }
 
 /**
- * Create a new event in Google Calendar
+ * Convert a task ID (UUID or any string) to a valid Google Calendar event ID.
+ * GCal IDs must be 5-1024 chars, lowercase [a-v0-9].
+ * We convert each hex char to its base-32 equivalent (0-9a-f → 0-9a-f, which are all valid).
+ */
+export function taskIdToGCalId(taskId: string): string {
+  // Strip non-hex chars, lowercase, prefix with 'mc' to namespace
+  const hex = taskId.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+  return `mc${hex}`.slice(0, 1024);
+}
+
+/**
+ * Create a new event in Google Calendar.
+ * If `deterministicId` is provided, it's set as the event ID to prevent duplicates.
+ * On 409 Conflict (already exists), returns the existing event instead of failing.
  */
 export async function createGCalEvent(
   calendarId: string,
@@ -423,15 +436,27 @@ export async function createGCalEvent(
     description?: string;
     start: { dateTime?: string; date?: string; timeZone?: string };
     end: { dateTime?: string; date?: string; timeZone?: string };
-  }
+  },
+  deterministicId?: string,
 ): Promise<GoogleCalendarEvent> {
+  const body: any = { ...event };
+  if (deterministicId) {
+    body.id = deterministicId;
+  }
+
   const resp = await gcalFetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
     {
       method: 'POST',
-      body: JSON.stringify(event),
+      body: JSON.stringify(body),
     }
   );
+
+  // 409 = event with this ID already exists — not an error, just skip
+  if (resp.status === 409) {
+    return { id: deterministicId!, summary: event.summary, start: event.start, end: event.end } as GoogleCalendarEvent;
+  }
+
   if (!resp.ok) throw new Error(`Failed to create event: ${resp.statusText}`);
   return resp.json();
 }
@@ -497,7 +522,9 @@ export async function pushTasksToGCal(tasks: {
         eventBody.end = { dateTime: `${task.dueDate}T${task.endTime || '10:00'}:00`, timeZone: tz };
       }
 
-      const created = await createGCalEvent('primary', eventBody);
+      // Use deterministic ID derived from task ID — prevents duplicates on re-push
+      const deterministicId = taskIdToGCalId(task.id);
+      const created = await createGCalEvent('primary', eventBody, deterministicId);
       if (created?.id) {
         results.set(task.id, created.id);
       }

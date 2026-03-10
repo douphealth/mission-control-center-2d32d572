@@ -15,6 +15,7 @@ import {
     gCalEventToCalEvent,
     loadGisScript,
     pushTasksToGCal,
+    taskIdToGCalId,
     type GoogleCalendarList,
     type GoogleCalendarEvent,
     type GCalConfig,
@@ -43,6 +44,7 @@ export function useGoogleCalendar(opts?: {
 }) {
     const autoFetch = opts?.autoFetch ?? true;
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const syncLockRef = useRef(false);
 
     const [state, setState] = useState<GCalSyncState>(() => {
         const cfg = getGCalConfig();
@@ -95,6 +97,12 @@ export function useGoogleCalendar(opts?: {
     // Sync events (bidirectional: push local tasks + pull GCal events)
     const syncEvents = useCallback(async (force = false) => {
         if (!isGCalConnected()) return;
+        // Mutex: prevent concurrent syncs from creating duplicates
+        if (syncLockRef.current) {
+            console.log('⏳ Sync already in progress, skipping');
+            return;
+        }
+        syncLockRef.current = true;
 
         setState(s => ({ ...s, syncing: true, error: null }));
         try {
@@ -123,6 +131,11 @@ export function useGoogleCalendar(opts?: {
             const pushedGCalIds = new Set(
                 updatedTasks.map(t => t.gcalEventId).filter(Boolean)
             );
+
+            // 1b. Deterministic ID match: events we created have IDs derived from task IDs
+            for (const t of updatedTasks) {
+                pushedGCalIds.add(taskIdToGCalId(t.id));
+            }
 
             // 2. Content-based match: match by normalized title + date
             //    Handles edge cases where gcalEventId wasn't stored (race conditions, etc.)
@@ -177,6 +190,8 @@ export function useGoogleCalendar(opts?: {
             }));
         } catch (e: any) {
             setState(s => ({ ...s, syncing: false, error: e.message }));
+        } finally {
+            syncLockRef.current = false;
         }
     }, [getTimeRange, state.calendars]);
 
