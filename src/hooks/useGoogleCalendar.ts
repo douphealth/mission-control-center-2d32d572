@@ -194,7 +194,7 @@ export function useGoogleCalendar(opts?: {
         } finally {
             syncLockRef.current = false;
         }
-    }, [getTimeRange, state.calendars]);
+    }, [getTimeRange, state.calendars, storeUpdateItem]);
 
     // Connect to Google
     const connect = useCallback(async (clientId: string) => {
