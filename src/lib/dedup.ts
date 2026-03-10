@@ -31,7 +31,8 @@ function fpWebsite(item: Partial<Website>): string {
 }
 
 function fpTask(item: Partial<Task>): string {
-    return `t|${norm(item.title)}|${norm(item.category)}|${norm(item.linkedProject)}`;
+    // Include dueDate in fingerprint — two tasks with the same title on the same date are duplicates
+    return `t|${norm(item.title)}|${norm(item.dueDate)}|${norm(item.category)}|${norm(item.linkedProject)}`;
 }
 
 function fpRepo(item: Partial<GitHubRepo>): string {
