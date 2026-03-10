@@ -163,7 +163,7 @@ export function useGoogleCalendar(opts?: {
                         (t.title || '').trim().toLowerCase() === rawTitle && t.dueDate === evDate && !t.gcalEventId
                     );
                     if (matchingTask) {
-                        db.tasks.update(matchingTask.id, { gcalEventId: ev.id }).catch(() => {});
+                        storeUpdateItem<Task>('tasks', matchingTask.id, { gcalEventId: ev.id } as Partial<Task>).catch(() => {});
                         pushedGCalIds.add(ev.id); // prevent future re-checks
                     }
                     return false;
