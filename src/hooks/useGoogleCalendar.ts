@@ -132,6 +132,11 @@ export function useGoogleCalendar(opts?: {
                 updatedTasks.map(t => t.gcalEventId).filter(Boolean)
             );
 
+            // 1b. Deterministic ID match: events we created have IDs derived from task IDs
+            for (const t of updatedTasks) {
+                pushedGCalIds.add(taskIdToGCalId(t.id));
+            }
+
             // 2. Content-based match: match by normalized title + date
             //    Handles edge cases where gcalEventId wasn't stored (race conditions, etc.)
             const localTaskFingerprints = new Set(
