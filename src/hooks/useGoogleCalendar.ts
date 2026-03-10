@@ -97,6 +97,12 @@ export function useGoogleCalendar(opts?: {
     // Sync events (bidirectional: push local tasks + pull GCal events)
     const syncEvents = useCallback(async (force = false) => {
         if (!isGCalConnected()) return;
+        // Mutex: prevent concurrent syncs from creating duplicates
+        if (syncLockRef.current) {
+            console.log('⏳ Sync already in progress, skipping');
+            return;
+        }
+        syncLockRef.current = true;
 
         setState(s => ({ ...s, syncing: true, error: null }));
         try {
