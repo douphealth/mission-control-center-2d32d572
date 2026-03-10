@@ -46,6 +46,7 @@ export function useGoogleCalendar(opts?: {
     const autoFetch = opts?.autoFetch ?? true;
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const syncLockRef = useRef(false);
+    const storeUpdateItem = useDataStore(s => s.updateItem);
 
     const [state, setState] = useState<GCalSyncState>(() => {
         const cfg = getGCalConfig();
