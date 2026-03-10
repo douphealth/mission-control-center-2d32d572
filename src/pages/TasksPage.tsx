@@ -469,8 +469,11 @@ function KanbanCard({
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          {task.reminder && task.reminder !== 'none' && (
-            <span title={REMINDER_LABELS[task.reminder]}><Bell size={10} className="text-primary/60" /></span>
+          {((task.reminders && task.reminders.length > 0) || (task.reminder && task.reminder !== 'none')) && (
+            <span title={(task.reminders || []).map(getReminderLabel).join(', ') || REMINDER_LABELS[task.reminder || 'none']}>
+              <Bell size={10} className="text-primary/60" />
+              {(task.reminders?.length || 0) > 1 && <span className="text-[8px] text-primary/60 ml-0.5">{task.reminders!.length}</span>}
+            </span>
           )}
           <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
         </div>
