@@ -5,10 +5,11 @@ import {
   Plus, Search, CheckCircle2, Circle, AlertTriangle, Edit2, Trash2,
   GripVertical, ChevronDown, LayoutGrid, List, Flag, Tag, Calendar,
   X, Clock, ArrowRight, Zap, Target, Flame, Filter, MoreHorizontal,
-  CheckSquare, Layers, TrendingUp, BarChart3, Copy
+  CheckSquare, Layers, TrendingUp, BarChart3, Copy, Bell
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Task } from "@/lib/db";
+import { REMINDER_LABELS, requestNotificationPermission } from "@/lib/notifications";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ const EMPTY: Omit<Task, "id"> = {
   dueDate: today, category: "General",
   description: "", linkedProject: "",
   subtasks: [], createdAt: today,
+  reminder: 'none', reminderFired: false,
 };
 
 interface TaskModalProps {
@@ -215,6 +217,30 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Reminder */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 flex items-center gap-1.5">
+                  <Bell size={12} className="text-primary" /> Reminder
+                </label>
+                <select
+                  value={form.reminder || 'none'}
+                  onChange={async (e) => {
+                    const val = e.target.value as Task['reminder'];
+                    uf("reminder", val);
+                    uf("reminderFired", false);
+                    if (val !== 'none') {
+                      const granted = await requestNotificationPermission();
+                      if (!granted) toast.info("Enable browser notifications for push alerts");
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none appearance-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {Object.entries(REMINDER_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Linked project */}
@@ -400,8 +426,12 @@ function KanbanCard({
             </span>
           )}
         </div>
-        {/* Drag handle hint */}
-        <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
+        <div className="flex items-center gap-1.5">
+          {task.reminder && task.reminder !== 'none' && (
+            <span title={REMINDER_LABELS[task.reminder]}><Bell size={10} className="text-primary/60" /></span>
+          )}
+          <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
+        </div>
       </div>
     </motion.div>
   );

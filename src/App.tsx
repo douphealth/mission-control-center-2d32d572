@@ -47,6 +47,17 @@ const queryClient = new QueryClient({
   },
 });
 
+import { useEffect } from "react";
+import { startNotificationLoop, stopNotificationLoop } from "@/lib/notifications";
+
+function NotificationStarter() {
+  useEffect(() => {
+    startNotificationLoop();
+    return () => stopNotificationLoop();
+  }, []);
+  return null;
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -54,6 +65,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <DashboardProvider>
+          <NotificationStarter />
           <DashboardLayout />
         </DashboardProvider>
       </TooltipProvider>
