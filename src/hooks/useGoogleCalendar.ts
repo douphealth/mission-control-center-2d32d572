@@ -185,6 +185,8 @@ export function useGoogleCalendar(opts?: {
             }));
         } catch (e: any) {
             setState(s => ({ ...s, syncing: false, error: e.message }));
+        } finally {
+            syncLockRef.current = false;
         }
     }, [getTimeRange, state.calendars]);
 
