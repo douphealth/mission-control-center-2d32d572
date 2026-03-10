@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Task } from "@/lib/db";
-import { REMINDER_LABELS, requestNotificationPermission } from "@/lib/notifications";
+import { REMINDER_LABELS, getReminderLabel, requestNotificationPermission } from "@/lib/notifications";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,6 +54,7 @@ const EMPTY: Omit<Task, "id"> = {
   description: "", linkedProject: "",
   subtasks: [], createdAt: today,
   reminder: 'none', reminderFired: false,
+  reminders: [], remindersFired: [],
 };
 
 interface TaskModalProps {
@@ -219,28 +220,69 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 )}
               </div>
 
-              {/* Reminder */}
+              {/* Reminders (multiple) */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 flex items-center gap-1.5">
-                  <Bell size={12} className="text-primary" /> Reminder
+                  <Bell size={12} className="text-primary" /> Reminders
                 </label>
-                <select
-                  value={form.reminder || 'none'}
-                  onChange={async (e) => {
-                    const val = e.target.value as Task['reminder'];
-                    uf("reminder", val);
-                    uf("reminderFired", false);
-                    if (val !== 'none') {
-                      const granted = await requestNotificationPermission();
-                      if (!granted) toast.info("Enable browser notifications for push alerts");
-                    }
-                  }}
-                  className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none appearance-none focus:ring-2 focus:ring-primary/30"
-                >
-                  {Object.entries(REMINDER_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
+                {/* Existing reminders */}
+                <div className="space-y-1.5 mb-2">
+                  {(form.reminders || []).map((r, i) => (
+                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary text-sm text-foreground">
+                      <Bell size={11} className="text-primary/70 shrink-0" />
+                      <span className="flex-1">{getReminderLabel(r)}</span>
+                      <button type="button" onClick={() => {
+                        const next = [...(form.reminders || [])];
+                        next.splice(i, 1);
+                        uf("reminders", next);
+                        uf("remindersFired", (form.remindersFired || []).filter(f => f !== r));
+                      }} className="text-muted-foreground hover:text-destructive transition-colors">
+                        <X size={12} />
+                      </button>
+                    </div>
                   ))}
-                </select>
+                </div>
+                {/* Add reminder */}
+                <div className="flex gap-2">
+                  <select
+                    id="add-reminder-select"
+                    defaultValue=""
+                    className="flex-1 px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none appearance-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="" disabled>Add a reminder…</option>
+                    {Object.entries(REMINDER_LABELS).filter(([k]) => k !== 'none').map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                    <option value="__custom">Custom…</option>
+                  </select>
+                  <button type="button" onClick={async () => {
+                    const sel = document.getElementById('add-reminder-select') as HTMLSelectElement;
+                    const val = sel.value;
+                    if (!val) return;
+
+                    if (val === '__custom') {
+                      // Show custom input prompt
+                      const mins = prompt("Enter reminder time in minutes before due (e.g., 10 for 10 minutes, 120 for 2 hours, 1440 for 1 day):");
+                      if (!mins) return;
+                      const parsed = parseInt(mins, 10);
+                      if (isNaN(parsed) || parsed < 0) { toast.error("Enter a valid number of minutes"); return; }
+                      const key = parsed === 0 ? 'at-time' : `custom:${parsed}`;
+                      if ((form.reminders || []).includes(key)) { toast.info("Reminder already added"); return; }
+                      uf("reminders", [...(form.reminders || []), key]);
+                    } else {
+                      if ((form.reminders || []).includes(val)) { toast.info("Reminder already added"); return; }
+                      uf("reminders", [...(form.reminders || []), val]);
+                    }
+
+                    uf("remindersFired", []);
+                    sel.value = "";
+
+                    const granted = await requestNotificationPermission();
+                    if (!granted) toast.info("Enable browser notifications for push alerts");
+                  }} className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
 
               {/* Linked project */}
@@ -427,8 +469,11 @@ function KanbanCard({
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          {task.reminder && task.reminder !== 'none' && (
-            <span title={REMINDER_LABELS[task.reminder]}><Bell size={10} className="text-primary/60" /></span>
+          {((task.reminders && task.reminders.length > 0) || (task.reminder && task.reminder !== 'none')) && (
+            <span title={(task.reminders || []).map(getReminderLabel).join(', ') || REMINDER_LABELS[task.reminder || 'none']}>
+              <Bell size={10} className="text-primary/60" />
+              {(task.reminders?.length || 0) > 1 && <span className="text-[8px] text-primary/60 ml-0.5">{task.reminders!.length}</span>}
+            </span>
           )}
           <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
         </div>
