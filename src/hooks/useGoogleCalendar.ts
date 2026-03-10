@@ -116,14 +116,47 @@ export function useGoogleCalendar(opts?: {
             const { min, max } = getTimeRange();
             const rawEvents = await syncGCalEvents(min, max, force);
 
-            // Build set of GCal event IDs that originated from local tasks
+            // ── Enterprise-grade dedup: filter out events that originated from this app ──
             const updatedTasks = await db.tasks.toArray();
+
+            // 1. Direct ID match: gcalEventId stored on local tasks
             const pushedGCalIds = new Set(
                 updatedTasks.map(t => t.gcalEventId).filter(Boolean)
             );
 
-            // Filter out events that were pushed FROM this app to avoid duplicates
-            const externalEvents = rawEvents.filter(ev => !pushedGCalIds.has(ev.id));
+            // 2. Content-based match: match by normalized title + date
+            //    Handles edge cases where gcalEventId wasn't stored (race conditions, etc.)
+            const localTaskFingerprints = new Set(
+                updatedTasks.map(t => {
+                    const title = (t.title || '').trim().toLowerCase();
+                    return `${title}|${t.dueDate || ''}`;
+                })
+            );
+
+            const externalEvents = rawEvents.filter(ev => {
+                // Skip if ID matches a pushed task
+                if (pushedGCalIds.has(ev.id)) return false;
+
+                // Content-based dedup: strip the 📋 prefix we add when pushing
+                const rawTitle = (ev.summary || '').replace(/^📋\s*/, '').trim().toLowerCase();
+                const evDate = ev.start.date || (ev.start.dateTime ? new Date(ev.start.dateTime).toISOString().split('T')[0] : '');
+                const fp = `${rawTitle}|${evDate}`;
+
+                if (localTaskFingerprints.has(fp)) {
+                    // This GCal event matches a local task by content — it's a mirror, skip it
+                    // Also backfill the gcalEventId if missing
+                    const matchingTask = updatedTasks.find(t =>
+                        (t.title || '').trim().toLowerCase() === rawTitle && t.dueDate === evDate && !t.gcalEventId
+                    );
+                    if (matchingTask) {
+                        db.tasks.update(matchingTask.id, { gcalEventId: ev.id }).catch(() => {});
+                        pushedGCalIds.add(ev.id); // prevent future re-checks
+                    }
+                    return false;
+                }
+
+                return true;
+            });
 
             // Get calendar colors for mapping
             const calMap = new Map<string, string>();
