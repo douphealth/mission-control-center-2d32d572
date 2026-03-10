@@ -522,7 +522,9 @@ export async function pushTasksToGCal(tasks: {
         eventBody.end = { dateTime: `${task.dueDate}T${task.endTime || '10:00'}:00`, timeZone: tz };
       }
 
-      const created = await createGCalEvent('primary', eventBody);
+      // Use deterministic ID derived from task ID — prevents duplicates on re-push
+      const deterministicId = taskIdToGCalId(task.id);
+      const created = await createGCalEvent('primary', eventBody, deterministicId);
       if (created?.id) {
         results.set(task.id, created.id);
       }
