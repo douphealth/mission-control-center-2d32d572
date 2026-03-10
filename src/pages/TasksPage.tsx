@@ -431,6 +431,7 @@ function KanbanCard({
             <Bell size={10} className="text-primary/60" title={REMINDER_LABELS[task.reminder]} />
           )}
           <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
+        </div>
       </div>
     </motion.div>
   );
