@@ -49,9 +49,14 @@ export default function PaymentsPage() {
     setModalOpen(false);
   };
   const deletePayment = (id: string) => {
-    if (!confirm("Delete this payment?")) return;
-    updateData({ payments: payments.filter(p => p.id !== id) });
-    toast.success("Payment deleted");
+    cd.confirm({
+      title: "Delete Payment",
+      description: "This payment record will be permanently removed.",
+      onConfirm: () => {
+        updateData({ payments: payments.filter(p => p.id !== id) });
+        toast.success("Payment deleted");
+      },
+    });
   };
   const duplicatePayment = async (id: string) => { const newId = await duplicateItem("payments", id, { status: "pending", paidDate: "" }); if (newId) toast.success("Payment duplicated"); };
   const markPaid = (id: string) => {
