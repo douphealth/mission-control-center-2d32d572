@@ -211,6 +211,7 @@ export default function PaymentsPage() {
         </div>
       )}
 
+      <ConfirmDialog {...cd.dialogProps} />
       <FormModal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? "Edit Payment" : "Add Payment"} onSubmit={saveForm} size="lg">
         <FormField label="Title *"><FormInput value={form.title} onChange={v => uf("title", v)} placeholder="Payment description" /></FormField>
         <div className="grid grid-cols-2 gap-4">
