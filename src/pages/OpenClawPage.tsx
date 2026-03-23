@@ -165,7 +165,7 @@ export default function OpenClawPage() {
             <div className="text-[10px] text-muted-foreground flex items-center gap-1 shrink-0">
               <Clock size={9} /> {s.lastChecked}
             </div>
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
                 <Edit2 size={12} />
               </button>
