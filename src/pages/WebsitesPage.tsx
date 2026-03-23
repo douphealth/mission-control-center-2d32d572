@@ -178,16 +178,8 @@ export default function WebsitesPage() {
 
   const bulkDelete = useCallback(() => {
     if (selectedIds.size === 0) return;
-    setPendingBulkDelete(true);
-  }, [selectedIds]);
-
-  const confirmBulkDelete = useCallback(() => {
-    updateData({ websites: websites.filter(w => !selectedIds.has(w.id)) });
-    toast.success(`${selectedIds.size} websites deleted`);
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    setPendingBulkDelete(false);
-  }, [selectedIds, websites, updateData]);
+    cd.confirm({ title: `Delete ${selectedIds.size} Website(s)`, description: `This will permanently remove ${selectedIds.size} websites.`, onConfirm: () => { updateData({ websites: websites.filter(w => !selectedIds.has(w.id)) }); toast.success(`${selectedIds.size} websites deleted`); setSelectedIds(new Set()); setBulkMode(false); } });
+  }, [selectedIds, websites, updateData, cd]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     if (selectedIds.size === 0) return;
