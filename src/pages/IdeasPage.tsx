@@ -7,7 +7,7 @@ import type { Idea } from "@/lib/store";
 import { toast } from "sonner";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
 const statusConfig: Record<string, { label: string; icon: any; class: string; bg: string }> = {
   spark: { label: "Spark", icon: Sparkles, class: "badge-warning", bg: "from-warning/20 to-warning/5" },
