@@ -95,11 +95,16 @@ export default function HabitsPage() {
 
     const bulkDelete = useCallback(async () => {
         if (bulk.selectedCount === 0) return;
-        if (!confirm(`Delete ${bulk.selectedCount} habit(s)?`)) return;
-        for (const id of bulk.selectedIds) { await deleteItem("habits", id); }
-        toast.success(`${bulk.selectedCount} habits deleted`);
-        bulk.clearSelection();
-    }, [bulk, deleteItem]);
+        cd.confirm({
+            title: `Delete ${bulk.selectedCount} Habit(s)`,
+            description: `This will permanently remove ${bulk.selectedCount} habits and all their tracking data.`,
+            onConfirm: async () => {
+                for (const id of bulk.selectedIds) { await deleteItem("habits", id); }
+                toast.success(`${bulk.selectedCount} habits deleted`);
+                bulk.clearSelection();
+            },
+        });
+    }, [bulk, deleteItem, cd]);
 
     return (
         <div className="space-y-5 sm:space-y-6">

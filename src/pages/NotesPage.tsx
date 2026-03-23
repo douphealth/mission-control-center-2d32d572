@@ -71,13 +71,18 @@ export default function NotesPage() {
 
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    if (!confirm(`Delete ${bulk.selectedCount} note(s)?`)) return;
-    const remaining = notes.filter(n => !bulk.selectedIds.has(n.id));
-    updateData({ notes: remaining });
-    if (bulk.selectedIds.has(selectedId || "")) setSelectedId(remaining[0]?.id ?? null);
-    toast.success(`${bulk.selectedCount} notes deleted`);
-    bulk.clearSelection();
-  }, [bulk, notes, updateData, selectedId]);
+    cd.confirm({
+      title: `Delete ${bulk.selectedCount} Note(s)`,
+      description: `This will permanently remove ${bulk.selectedCount} notes.`,
+      onConfirm: () => {
+        const remaining = notes.filter(n => !bulk.selectedIds.has(n.id));
+        updateData({ notes: remaining });
+        if (bulk.selectedIds.has(selectedId || "")) setSelectedId(remaining[0]?.id ?? null);
+        toast.success(`${bulk.selectedCount} notes deleted`);
+        bulk.clearSelection();
+      },
+    });
+  }, [bulk, notes, updateData, selectedId, cd]);
 
   const bulkTogglePin = useCallback(() => {
     updateData({ notes: notes.map(n => bulk.selectedIds.has(n.id) ? { ...n, pinned: !n.pinned } : n) });
