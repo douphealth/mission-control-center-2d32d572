@@ -148,7 +148,7 @@ export default function HabitsPage() {
                         <h2 className="text-base font-bold flex items-center gap-2"><Zap size={15} className="text-amber-500" /> Today's Check-in</h2>
                         <span className="text-xs text-muted-foreground">{today}</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
                         {habits.map(h => {
                             const done = isCompletedToday(h);
                             return (
