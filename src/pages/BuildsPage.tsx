@@ -44,30 +44,16 @@ export default function BuildsPage() {
     }
     setModalOpen(false);
   };
-  const deleteBuild = (id: string) => setPendingDeleteId(id);
+  const deleteBuild = (id: string) => {
+    cd.confirm({ title: "Delete Project", description: "This build project will be permanently removed.", onConfirm: () => { updateData({ buildProjects: buildProjects.filter((b: any) => b.id !== id) }); toast.success("Project deleted"); } });
+  };
   const duplicateBuild = async (id: string) => { const newId = await duplicateItem("buildProjects", id, { status: "ideation" }); if (newId) toast.success("Project duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
-  const closeDeleteDialog = useCallback(() => { setPendingDeleteId(null); setPendingBulkDelete(false); }, []);
-
-  const confirmDeleteSingle = useCallback(() => {
-    if (!pendingDeleteId) return;
-    updateData({ buildProjects: buildProjects.filter((b: any) => b.id !== pendingDeleteId) });
-    toast.success("Project deleted");
-    closeDeleteDialog();
-  }, [pendingDeleteId, buildProjects, updateData, closeDeleteDialog]);
-
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    setPendingBulkDelete(true);
-  }, [bulk.selectedCount]);
-
-  const confirmBulkDelete = useCallback(() => {
-    updateData({ buildProjects: buildProjects.filter((b: any) => !bulk.selectedIds.has(b.id)) });
-    toast.success(`${bulk.selectedCount} projects deleted`);
-    bulk.clearSelection();
-    closeDeleteDialog();
-  }, [bulk, buildProjects, updateData, closeDeleteDialog]);
+    cd.confirm({ title: `Delete ${bulk.selectedCount} Project(s)`, description: `This will permanently remove ${bulk.selectedCount} build projects.`, onConfirm: () => { updateData({ buildProjects: buildProjects.filter((b: any) => !bulk.selectedIds.has(b.id)) }); toast.success(`${bulk.selectedCount} projects deleted`); bulk.clearSelection(); } });
+  }, [bulk, buildProjects, updateData, cd]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     const now = new Date().toISOString().split("T")[0];
