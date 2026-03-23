@@ -6,7 +6,7 @@ import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInpu
 import type { BuildProject } from "@/lib/db";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 
 const platformStyle: Record<string, { badge: string; emoji: string; label: string }> = {
