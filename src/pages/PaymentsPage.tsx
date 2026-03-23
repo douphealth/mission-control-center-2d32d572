@@ -23,6 +23,7 @@ export default function PaymentsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyPayment);
   const bulk = useBulkActions<Payment>();
+  const cd = useConfirmDialog();
 
   const filtered = payments
     .filter(p => filterType === "all" || p.type === filterType)
