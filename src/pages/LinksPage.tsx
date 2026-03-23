@@ -39,29 +39,16 @@ export default function LinksPage() {
     setModalOpen(false);
   };
   const togglePin = (id: string) => updateData({ links: links.map(l => l.id === id ? { ...l, pinned: !l.pinned } : l) });
-  const deleteLink = (id: string) => setPendingDeleteId(id);
+  const deleteLink = (id: string) => {
+    cd.confirm({ title: "Delete Link", description: "This link will be permanently removed.", onConfirm: () => { updateData({ links: links.filter(l => l.id !== id) }); toast.success("Link deleted"); } });
+  };
   const duplicateLink = async (id: string) => { const newId = await duplicateItem("links", id); if (newId) toast.success("Link duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
-  const closeDeleteDialog = useCallback(() => { setPendingDeleteId(null); setPendingBulkDelete(false); }, []);
-  const confirmDeleteSingle = useCallback(() => {
-    if (!pendingDeleteId) return;
-    updateData({ links: links.filter(l => l.id !== pendingDeleteId) });
-    toast.success("Link deleted");
-    closeDeleteDialog();
-  }, [pendingDeleteId, links, updateData, closeDeleteDialog]);
-
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    setPendingBulkDelete(true);
-  }, [bulk.selectedCount]);
-
-  const confirmBulkDelete = useCallback(() => {
-    updateData({ links: links.filter(l => !bulk.selectedIds.has(l.id)) });
-    toast.success(`${bulk.selectedCount} links deleted`);
-    bulk.clearSelection();
-    closeDeleteDialog();
-  }, [bulk, links, updateData, closeDeleteDialog]);
+    cd.confirm({ title: `Delete ${bulk.selectedCount} Link(s)`, description: `This will permanently remove ${bulk.selectedCount} links.`, onConfirm: () => { updateData({ links: links.filter(l => !bulk.selectedIds.has(l.id)) }); toast.success(`${bulk.selectedCount} links deleted`); bulk.clearSelection(); } });
+  }, [bulk, links, updateData, cd]);
 
   const bulkUpdateCategory = useCallback((cat: string) => {
     updateData({ links: links.map(l => bulk.selectedIds.has(l.id) ? { ...l, category: cat } : l) });
