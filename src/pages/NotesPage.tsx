@@ -51,11 +51,17 @@ export default function NotesPage() {
     updateData({ notes: notes.map(n => n.id === id ? { ...n, pinned: !n.pinned } : n) });
   };
 
+  const cd = useConfirmDialog();
   const deleteNote = (id: string) => {
-    if (!confirm("Delete this note?")) return;
-    const remaining = notes.filter(n => n.id !== id);
-    updateData({ notes: remaining });
-    if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
+    cd.confirm({
+      title: "Delete Note",
+      description: "This note will be permanently removed.",
+      onConfirm: () => {
+        const remaining = notes.filter(n => n.id !== id);
+        updateData({ notes: remaining });
+        if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
+      },
+    });
   };
 
   const duplicateNote = async (id: string) => {
