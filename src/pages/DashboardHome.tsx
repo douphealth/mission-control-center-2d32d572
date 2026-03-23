@@ -72,6 +72,7 @@ export default function DashboardHome() {
   const { userName } = useSettingsStore();
   const [clock, setClock] = useState(new Date());
   const gcal = useGoogleCalendar({ autoFetch: true });
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   useEffect(() => { const t = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(t); }, []);
 
