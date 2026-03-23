@@ -6,7 +6,7 @@ import FormModal, { FormField, FormInput, FormTextarea, FormSelect } from "@/com
 import type { LinkItem } from "@/lib/store";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 
 const emptyLink: Omit<LinkItem, "id"> = { title: "", url: "", category: "Tools", status: "active", description: "", dateAdded: new Date().toISOString().split("T")[0], pinned: false };
