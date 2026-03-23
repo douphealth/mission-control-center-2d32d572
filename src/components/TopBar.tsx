@@ -67,10 +67,10 @@ export default function TopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-2xl border-b border-border/20 px-4 sm:px-6 lg:px-8 h-[72px] flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-2xl border-b border-border/15 px-3 sm:px-6 lg:px-8 h-14 sm:h-[72px] flex items-center gap-2 sm:gap-3">
         {/* Mobile menu */}
         <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground p-2 -ml-1 active:scale-90 transition-transform touch-manipulation">
-          <Menu size={20} />
+          <Menu size={18} />
         </button>
 
         {/* Search — Dribbble style with shortcut indicator */}
