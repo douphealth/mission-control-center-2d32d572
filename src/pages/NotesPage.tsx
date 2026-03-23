@@ -227,6 +227,7 @@ export default function NotesPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }

@@ -249,6 +249,7 @@ export default function HabitsPage() {
                     </div>
                 </FormField>
             </FormModal>
+            <ConfirmDialog {...cd.dialogProps} />
         </div>
     );
 }

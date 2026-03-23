@@ -231,6 +231,7 @@ export default function OpenClawPage() {
           <FormTextarea value={form.notes} onChange={v => uf("notes", v)} rows={2} placeholder="Additional notes..." />
         </FormField>
       </FormModal>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }
