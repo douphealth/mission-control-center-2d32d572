@@ -7,6 +7,8 @@ import type { Payment } from "@/lib/store";
 import { toast } from "sonner";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const typeIcons: Record<string, string> = { income: "💰", expense: "💸", invoice: "📄", subscription: "🔄" };
 const statusBadge: Record<string, string> = { paid: "badge-success", pending: "badge-warning", overdue: "badge-destructive", cancelled: "badge-muted" };
