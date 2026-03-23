@@ -144,9 +144,9 @@ export default function TopBar() {
             <motion.button
               onClick={() => setQuickAddOpen(!quickAddOpen)}
               whileTap={{ scale: 0.88 }}
-              className="w-10 h-10 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[var(--shadow-primary)] hover:shadow-[0_8px_30px_-6px_hsl(var(--primary)/0.5)] transition-shadow touch-manipulation"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[var(--shadow-primary)] hover:shadow-[0_8px_30px_-6px_hsl(var(--primary)/0.5)] transition-shadow touch-manipulation"
             >
-              <Plus size={18} className={`transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} />
+              <Plus size={16} className={`transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} />
             </motion.button>
 
             <AnimatePresence>
