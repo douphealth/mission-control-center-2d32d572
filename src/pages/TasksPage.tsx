@@ -753,10 +753,10 @@ export default function TasksPage() {
     }
   }, [addItem, updateItem]);
 
+  const cd = useConfirmDialog();
   const handleDelete = useCallback(async (id: string) => {
-    await deleteItem("tasks", id);
-    toast.success("Task deleted");
-  }, [deleteItem]);
+    cd.confirm({ title: "Delete Task", description: "This task and its subtasks will be permanently removed.", onConfirm: async () => { await deleteItem("tasks", id); toast.success("Task deleted"); } });
+  }, [deleteItem, cd]);
 
   const handleDuplicate = useCallback(async (id: string) => {
     const newId = await duplicateItem("tasks", id, { status: "todo", completedAt: undefined });

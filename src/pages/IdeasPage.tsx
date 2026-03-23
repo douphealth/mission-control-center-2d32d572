@@ -200,20 +200,7 @@ export default function IdeasPage() {
         <FormField label="Tags"><FormTagsInput value={form.tags} onChange={v => uf("tags", v)} placeholder="Add tag and press Enter" /></FormField>
       </FormModal>
 
-      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkDelete ? `Delete ${bulk.selectedCount} idea(s)? This cannot be undone.` : "Delete this idea? This cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }

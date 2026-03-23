@@ -180,20 +180,7 @@ export default function BuildsPage() {
         <FormField label="Next Steps"><FormInput value={form.nextSteps} onChange={v => uf("nextSteps", v)} placeholder="What to do next..." /></FormField>
       </FormModal>
 
-      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkDelete ? `Delete ${bulk.selectedCount} project(s)? This cannot be undone.` : "Delete this project? This cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }
