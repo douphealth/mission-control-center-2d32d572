@@ -100,7 +100,7 @@ export default function CloudflarePage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Zones list */}
         <div className="lg:col-span-2 space-y-3">
           <h2 className="text-base font-bold text-foreground flex items-center gap-2">
