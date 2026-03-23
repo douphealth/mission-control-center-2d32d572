@@ -519,6 +519,13 @@
   .safe-area-top {
     padding-top: env(safe-area-inset-top, 0px);
   }
+
+  /* Mobile: always show action buttons (no hover on touch) */
+  @media (max-width: 768px) {
+    .mobile-actions-visible {
+      opacity: 1 !important;
+    }
+  }
 }
 
 /* ─── Animations ─────────────────────────────────────────────────── */

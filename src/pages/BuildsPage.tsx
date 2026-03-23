@@ -6,6 +6,7 @@ import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInpu
 import type { BuildProject } from "@/lib/db";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 const platformStyle: Record<string, { badge: string; emoji: string; label: string }> = {
@@ -24,6 +25,8 @@ export default function BuildsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBuild);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<BuildProject>();
 
   const filtered = buildProjects
@@ -42,17 +45,30 @@ export default function BuildsPage() {
     }
     setModalOpen(false);
   };
-  const deleteBuild = (id: string) => { if (confirm("Delete this project?")) updateData({ buildProjects: buildProjects.filter((b: any) => b.id !== id) }); };
+  const deleteBuild = (id: string) => setPendingDeleteId(id);
   const duplicateBuild = async (id: string) => { const newId = await duplicateItem("buildProjects", id, { status: "ideation" }); if (newId) toast.success("Project duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
+  const closeDeleteDialog = useCallback(() => { setPendingDeleteId(null); setPendingBulkDelete(false); }, []);
+
+  const confirmDeleteSingle = useCallback(() => {
+    if (!pendingDeleteId) return;
+    updateData({ buildProjects: buildProjects.filter((b: any) => b.id !== pendingDeleteId) });
+    toast.success("Project deleted");
+    closeDeleteDialog();
+  }, [pendingDeleteId, buildProjects, updateData, closeDeleteDialog]);
+
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    if (!confirm(`Delete ${bulk.selectedCount} project(s)?`)) return;
+    setPendingBulkDelete(true);
+  }, [bulk.selectedCount]);
+
+  const confirmBulkDelete = useCallback(() => {
     updateData({ buildProjects: buildProjects.filter((b: any) => !bulk.selectedIds.has(b.id)) });
     toast.success(`${bulk.selectedCount} projects deleted`);
     bulk.clearSelection();
-  }, [bulk, buildProjects, updateData]);
+    closeDeleteDialog();
+  }, [bulk, buildProjects, updateData, closeDeleteDialog]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     const now = new Date().toISOString().split("T")[0];
@@ -62,18 +78,18 @@ export default function BuildsPage() {
   }, [bulk, buildProjects, updateData]);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Build Projects</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{buildProjects.length} projects across platforms</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Build Projects</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{buildProjects.length} projects across platforms</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={bulk.toggleBulkMode}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
             <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
           </button>
-          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+          <button onClick={openAdd} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
             <Plus size={16} /> New Project
           </button>
         </div>
@@ -91,64 +107,60 @@ export default function BuildsPage() {
         />
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 max-w-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 flex-1 sm:max-w-xs">
           <Search size={14} className="text-muted-foreground" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects..." className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full" />
         </div>
-        <div className="flex items-center gap-1 bg-secondary rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 overflow-x-auto hide-scrollbar">
           {["all", "bolt", "lovable", "replit"].map(p => (
-            <button key={p} onClick={() => setFilterPlatform(p)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filterPlatform === p ? "bg-card text-card-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+            <button key={p} onClick={() => setFilterPlatform(p)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${filterPlatform === p ? "bg-card text-card-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
               {p === "all" ? "All" : `${platformStyle[p]?.emoji} ${platformStyle[p]?.label}`}
             </button>
           ))}
         </div>
-        <div className="ml-auto flex gap-1.5">
-          {(["bolt", "lovable", "replit"] as const).map(p => (
-            <a key={p} href={p === "bolt" ? "https://bolt.new" : p === "lovable" ? "https://lovable.dev" : "https://replit.com"} target="_blank" rel="noopener noreferrer" className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80 ${platformStyle[p].badge}`}>
-              {platformStyle[p].emoji} Open
-            </a>
-          ))}
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {filtered.map((bp: any, i: number) => {
           const ps = platformStyle[bp.platform] || platformStyle.bolt;
           return (
             <motion.div key={bp.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
               onClick={bulk.bulkMode ? () => bulk.toggleSelect(bp.id) : undefined}
-              className={`card-elevated p-5 space-y-3 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(bp.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
+              className={`card-elevated p-4 sm:p-5 space-y-3 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(bp.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
               <div className="flex items-start justify-between">
                 {bulk.bulkMode && (
                   <div className="mr-2">{bulk.isSelected(bp.id) ? <CheckSquare size={16} className="text-primary" /> : <div className="w-4 h-4 rounded border border-muted-foreground/30" />}</div>
                 )}
-                <h3 className="font-semibold text-card-foreground">{bp.name}</h3>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ps.badge}`}>{ps.emoji} {bp.platform}</span>
+                <h3 className="font-semibold text-card-foreground truncate">{bp.name}</h3>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${ps.badge}`}>{ps.emoji} {bp.platform}</span>
               </div>
-              <p className="text-sm text-muted-foreground">{bp.description}</p>
-              <div className="flex items-center gap-1">
+              <p className="text-sm text-muted-foreground line-clamp-2">{bp.description}</p>
+              {/* Status pipeline - scrollable on mobile */}
+              <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar">
                 {(["ideation", "building", "testing", "deployed"] as const).map((s, idx) => (
-                  <div key={s} className="flex items-center gap-1">
+                  <div key={s} className="flex items-center gap-1 flex-shrink-0">
                     <div className={`w-2.5 h-2.5 rounded-full transition-colors ${statusOrder[bp.status] >= idx ? "bg-primary" : "bg-muted"}`} />
                     <span className={`text-[10px] ${statusOrder[bp.status] >= idx ? "text-card-foreground font-medium" : "text-muted-foreground"}`}>{s}</span>
-                    {idx < 3 && <div className={`w-5 h-0.5 rounded transition-colors ${statusOrder[bp.status] > idx ? "bg-primary" : "bg-muted"}`} />}
+                    {idx < 3 && <div className={`w-4 sm:w-5 h-0.5 rounded transition-colors ${statusOrder[bp.status] > idx ? "bg-primary" : "bg-muted"}`} />}
                   </div>
                 ))}
               </div>
-              <div className="flex flex-wrap gap-1">
-                {bp.techStack.map((t: string) => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground">{t}</span>)}
-              </div>
+              {bp.techStack.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {bp.techStack.map((t: string) => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground">{t}</span>)}
+                </div>
+              )}
               {bp.nextSteps && <p className="text-xs text-muted-foreground/80 italic">💡 Next: {bp.nextSteps}</p>}
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 pt-1 flex-wrap">
                 {bp.projectUrl && <a href={bp.projectUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1"><ExternalLink size={12} /> Open</a>}
                 {bp.deployedUrl && <a href={bp.deployedUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">🚀 Live</a>}
                 {bp.githubRepo && <a href={bp.githubRepo} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">📂 GitHub</a>}
                 {!bulk.bulkMode && (
-                  <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => duplicateBuild(bp.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={13} /></button>
-                    <button onClick={() => openEdit(bp)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
-                    <button onClick={() => deleteBuild(bp.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
+                  <div className="ml-auto flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => duplicateBuild(bp.id)} className="text-muted-foreground hover:text-blue-500 p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Duplicate"><Copy size={14} /></button>
+                    <button onClick={() => openEdit(bp)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-secondary transition-colors"><Edit2 size={14} /></button>
+                    <button onClick={() => deleteBuild(bp.id)} className="text-muted-foreground hover:text-destructive p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"><Trash2 size={14} /></button>
                   </div>
                 )}
               </div>
@@ -167,7 +179,7 @@ export default function BuildsPage() {
 
       <FormModal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? "Edit Project" : "New Build Project"} onSubmit={saveForm}>
         <FormField label="Project Name *"><FormInput value={form.name} onChange={v => uf("name", v)} placeholder="My AI App" /></FormField>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <FormField label="Platform">
             <FormSelect value={form.platform} onChange={v => uf("platform", v as any)} options={[{value:"bolt",label:"⚡ Bolt"},{value:"lovable",label:"💜 Lovable"},{value:"replit",label:"🟢 Replit"}]} />
           </FormField>
@@ -182,6 +194,21 @@ export default function BuildsPage() {
         <FormField label="Tech Stack"><FormTagsInput value={form.techStack} onChange={v => uf("techStack", v)} placeholder="React, Supabase, etc." /></FormField>
         <FormField label="Next Steps"><FormInput value={form.nextSteps} onChange={v => uf("nextSteps", v)} placeholder="What to do next..." /></FormField>
       </FormModal>
+
+      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBulkDelete ? `Delete ${bulk.selectedCount} project(s)? This cannot be undone.` : "Delete this project? This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

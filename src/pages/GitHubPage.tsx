@@ -72,18 +72,18 @@ export default function GitHubPage() {
   }, [bulk, repos, updateData]);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">GitHub Projects</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{repos.length} repositories</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">GitHub Projects</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{repos.length} repositories</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={bulk.toggleBulkMode}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
             <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
           </button>
-          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+          <button onClick={openAdd} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
             <Plus size={16} /> Add Repo
           </button>
         </div>
@@ -105,22 +105,22 @@ export default function GitHubPage() {
         />
       )}
 
-      <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 max-w-xs">
+      <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 w-full sm:max-w-xs">
         <Search size={14} className="text-muted-foreground" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search repos..." className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {filtered.map((repo, i) => (
           <motion.div key={repo.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
             onClick={bulk.bulkMode ? () => bulk.toggleSelect(repo.id) : undefined}
-            className={`card-elevated p-5 space-y-3 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(repo.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
+            className={`card-elevated p-4 sm:p-5 space-y-3 group ${bulk.bulkMode ? 'cursor-pointer' : ''} ${bulk.isSelected(repo.id) ? 'ring-1 ring-primary/30 border-primary/50' : ''}`}>
             <div className="flex items-start justify-between">
               {bulk.bulkMode && (
                 <div className="mr-2">{bulk.isSelected(repo.id) ? <CheckSquare size={16} className="text-primary" /> : <div className="w-4 h-4 rounded border border-muted-foreground/30" />}</div>
               )}
-              <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-card-foreground hover:text-primary transition-colors">{repo.name}</a>
-              <span className={`badge-${repo.status === "active" ? "success" : repo.status === "stable" ? "info" : repo.status === "paused" ? "warning" : "muted"}`}>{repo.status}</span>
+              <a href={repo.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-card-foreground hover:text-primary transition-colors truncate">{repo.name}</a>
+              <span className={`badge-${repo.status === "active" ? "success" : repo.status === "stable" ? "info" : repo.status === "paused" ? "warning" : "muted"} flex-shrink-0`}>{repo.status}</span>
             </div>
             <p className="text-sm text-muted-foreground line-clamp-2">{repo.description}</p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -132,19 +132,23 @@ export default function GitHubPage() {
               <div className="flex justify-between text-xs text-muted-foreground mb-1"><span>Progress</span><span>{repo.progress}%</span></div>
               <div className="h-1.5 rounded-full bg-secondary overflow-hidden"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${repo.progress}%` }} /></div>
             </div>
-            <div className="flex flex-wrap gap-1">
-              {repo.topics.map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground">{t}</span>)}
-            </div>
+            {repo.topics.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {repo.topics.map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground">{t}</span>)}
+              </div>
+            )}
             <div className="flex items-center gap-2 pt-1 flex-wrap">
               <a href={repo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline"><ExternalLink size={12} /> Repo</a>
               {repo.demoUrl && <a href={repo.demoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">🌐 Demo</a>}
               {repo.devPlatformUrl && <a href={repo.devPlatformUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Code2 size={12} /> Platform</a>}
               {repo.deploymentUrl && <a href={repo.deploymentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Rocket size={12} /> Deploy</a>}
-              <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => duplicateRepo(repo.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={13} /></button>
-                <button onClick={() => openEdit(repo)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={13} /></button>
-                <button onClick={() => deleteRepo(repo.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={13} /></button>
-              </div>
+              {!bulk.bulkMode && (
+                <div className="ml-auto flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => duplicateRepo(repo.id)} className="text-muted-foreground hover:text-blue-500 p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Duplicate"><Copy size={14} /></button>
+                  <button onClick={() => openEdit(repo)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-secondary transition-colors"><Edit2 size={14} /></button>
+                  <button onClick={() => deleteRepo(repo.id)} className="text-muted-foreground hover:text-destructive p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"><Trash2 size={14} /></button>
+                </div>
+              )}
             </div>
           </motion.div>
         ))}
@@ -162,7 +166,7 @@ export default function GitHubPage() {
         <FormField label="Repo Name *"><FormInput value={form.name} onChange={v => uf("name", v)} placeholder="my-awesome-repo" /></FormField>
         <FormField label="GitHub URL"><FormInput value={form.url} onChange={v => uf("url", v)} placeholder="https://github.com/user/repo" /></FormField>
         <FormField label="Description"><FormTextarea value={form.description} onChange={v => uf("description", v)} placeholder="What does this repo do?" rows={2} /></FormField>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <FormField label="Language">
             <FormSelect value={form.language} onChange={v => uf("language", v)} options={["TypeScript","JavaScript","Python","PHP","HTML","Go","Rust","Ruby"].map(l => ({ value: l, label: l }))} />
           </FormField>
