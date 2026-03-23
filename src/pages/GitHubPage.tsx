@@ -6,7 +6,7 @@ import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInpu
 import type { GitHubRepo } from "@/lib/store";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 
 const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScript: "bg-yellow-400", Python: "bg-blue-400", PHP: "bg-purple-500", HTML: "bg-orange-500", Go: "bg-sky-400", Rust: "bg-orange-600", Ruby: "bg-red-500" };
