@@ -92,8 +92,8 @@ export default function OpenClawPage() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Bug size={22} className="text-violet-500" /> OpenClaw
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Bug size={20} className="text-violet-500" /> OpenClaw
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">Track OpenClaw services and API endpoints</p>
         </div>
