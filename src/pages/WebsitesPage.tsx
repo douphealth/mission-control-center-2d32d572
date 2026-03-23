@@ -152,20 +152,13 @@ export default function WebsitesPage() {
   };
 
   const deleteWebsite = (id: string) => {
-    setPendingDeleteId(id);
+    cd.confirm({ title: "Delete Website", description: "This website and all its data will be permanently removed.", onConfirm: () => { updateData({ websites: websites.filter(w => w.id !== id) }); toast.success("Website deleted"); } });
   };
 
   const duplicateWebsite = async (id: string) => {
     const newId = await duplicateItem("websites", id);
     if (newId) toast.success("Website duplicated");
   };
-
-  const confirmDeleteSingle = useCallback(() => {
-    if (!pendingDeleteId) return;
-    updateData({ websites: websites.filter(w => w.id !== pendingDeleteId) });
-    toast.success("Website deleted");
-    setPendingDeleteId(null);
-  }, [pendingDeleteId, websites, updateData]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
