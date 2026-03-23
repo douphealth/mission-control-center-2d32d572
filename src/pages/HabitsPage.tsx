@@ -95,20 +95,20 @@ export default function HabitsPage() {
     }, [bulk, deleteItem]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6">
             <div className="section-header">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Flame size={22} className="text-orange-500" /> Habit Tracker
+                    <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                        <Flame size={20} className="text-orange-500" /> Habit Tracker
                     </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5">Build streaks, track progress, become unstoppable</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Build streaks, track progress</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={bulk.toggleBulkMode}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
-                        <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
+                        className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+                        <CheckSquare size={14} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
                     </button>
-                    <button onClick={openAdd} className="btn-primary"><Plus size={15} /> New Habit</button>
+                    <button onClick={openAdd} className="btn-primary text-xs sm:text-sm"><Plus size={14} /> <span className="hidden sm:inline">New</span> Habit</button>
                 </div>
             </div>
 
@@ -124,18 +124,18 @@ export default function HabitsPage() {
             )}
 
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                 {[
                     { label: "Done Today", value: `${completedToday}/${habits.length}`, icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10" },
                     { label: "Total Habits", value: habits.length, icon: Target, color: "text-blue-500 bg-blue-500/10" },
                     { label: "Longest Streak", value: `${longestStreak}🔥`, icon: Flame, color: "text-orange-500 bg-orange-500/10" },
-                    { label: "Total Streak Days", value: totalStreak, icon: Trophy, color: "text-amber-500 bg-amber-500/10" },
+                    { label: "Total Streak", value: totalStreak, icon: Trophy, color: "text-amber-500 bg-amber-500/10" },
                 ].map(stat => (
-                    <div key={stat.label} className="card-glass p-4 flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${stat.color}`}><stat.icon size={17} /></div>
-                        <div>
-                            <div className="text-xl font-bold text-foreground">{stat.value}</div>
-                            <div className="text-xs text-muted-foreground">{stat.label}</div>
+                    <div key={stat.label} className="card-glass p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${stat.color}`}><stat.icon size={15} /></div>
+                        <div className="min-w-0">
+                            <div className="text-lg sm:text-xl font-bold text-foreground truncate">{stat.value}</div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.label}</div>
                         </div>
                     </div>
                 ))}
@@ -148,7 +148,7 @@ export default function HabitsPage() {
                         <h2 className="text-base font-bold flex items-center gap-2"><Zap size={15} className="text-amber-500" /> Today's Check-in</h2>
                         <span className="text-xs text-muted-foreground">{today}</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
                         {habits.map(h => {
                             const done = isCompletedToday(h);
                             return (
@@ -188,13 +188,13 @@ export default function HabitsPage() {
                                             <span className="badge-muted capitalize">{h.frequency}</span>
                                             {(h.streak || 0) > 0 && <span className="text-[10px] font-bold text-orange-500 flex items-center gap-0.5"><Flame size={9} /> {h.streak} day streak</span>}
                                         </div>
-                                        <div className="flex gap-1 mt-2">
+                                        <div className="flex gap-0.5 sm:gap-1 mt-2 overflow-x-auto hide-scrollbar">
                                             {last14.map(day => {
                                                 const done = (h.completions || []).includes(day);
                                                 const isToday = day === today;
                                                 return (
                                                     <div key={day} title={day}
-                                                        className={`w-5 h-5 rounded-md transition-all ${!bulk.bulkMode ? 'cursor-pointer' : ''} ${done ? `opacity-90` : isToday ? "bg-primary/10 border-2 border-primary/20" : "bg-secondary border border-border/30"}`}
+                                                        className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md sm:rounded-md flex-shrink-0 transition-all ${!bulk.bulkMode ? 'cursor-pointer' : ''} ${done ? `opacity-90` : isToday ? "bg-primary/10 border-2 border-primary/20" : "bg-secondary border border-border/30"}`}
                                                         style={done ? { background: h.color || "#3b82f6" } : {}}
                                                         onClick={!bulk.bulkMode ? (e) => { e.stopPropagation(); toggleToday(h); } : undefined}
                                                     />
@@ -203,7 +203,7 @@ export default function HabitsPage() {
                                         </div>
                                     </div>
                                     {!bulk.bulkMode && (
-                                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                        <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                                             <button onClick={() => handleDuplicate(h.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-colors" title="Duplicate"><Copy size={12} /></button>
                                             <button onClick={() => openEdit(h)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"><Edit2 size={12} /></button>
                                             <button onClick={() => handleDelete(h.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><Trash2 size={12} /></button>

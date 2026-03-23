@@ -67,51 +67,51 @@ export default function TopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-2xl border-b border-border/20 px-4 sm:px-6 lg:px-8 h-[72px] flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-2xl border-b border-border/15 px-3 sm:px-6 lg:px-8 h-14 sm:h-[72px] flex items-center gap-2 sm:gap-3">
         {/* Mobile menu */}
         <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground p-2 -ml-1 active:scale-90 transition-transform touch-manipulation">
-          <Menu size={20} />
+          <Menu size={18} />
         </button>
 
         {/* Search — Dribbble style with shortcut indicator */}
         <motion.button
           onClick={() => setCommandPaletteOpen(true)}
           whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2.5 flex-1 max-w-lg h-11 px-4 rounded-2xl bg-secondary/50 border border-border/20 hover:border-primary/20 hover:bg-secondary/70 transition-all duration-300 cursor-pointer group touch-manipulation"
+          className="flex items-center gap-2 sm:gap-2.5 flex-1 max-w-lg h-9 sm:h-11 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-secondary/50 border border-border/20 hover:border-primary/20 hover:bg-secondary/70 transition-all duration-300 cursor-pointer group touch-manipulation"
         >
-          <Search size={16} className="text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
-          <span className="text-sm text-muted-foreground/40 flex-1 text-left truncate">Search task</span>
+          <Search size={14} className="text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0 sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm text-muted-foreground/40 flex-1 text-left truncate">Search...</span>
           <div className="hidden md:flex items-center gap-1">
             <kbd className="text-[10px] text-muted-foreground/30 bg-card px-2 py-1 rounded-lg font-mono border border-border/30 shadow-sm">⌘ F</kbd>
           </div>
         </motion.button>
 
-        <div className="flex items-center gap-1.5 ml-auto">
-          {/* Action buttons — clean icon-only style */}
+        <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
+          {/* Action buttons — hidden on mobile for cleaner bar */}
           <motion.button
             onClick={() => setImportModalOpen(true)}
             whileTap={{ scale: 0.9 }}
-            className="flex items-center justify-center w-10 h-10 rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
+            className="hidden sm:flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
             title="Import"
           >
-            <Mail size={18} />
+            <Mail size={16} />
           </motion.button>
 
           <motion.button
             onClick={handleExport}
             whileTap={{ scale: 0.9 }}
-            className="flex items-center justify-center w-10 h-10 rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
+            className="hidden sm:flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
             title="Export"
           >
-            <Download size={18} />
+            <Download size={16} />
           </motion.button>
 
-          {/* Notifications — with count badge */}
+          {/* Notifications */}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            className="relative flex items-center justify-center w-10 h-10 rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
+            className="relative flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
           >
-            <Bell size={18} />
+            <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
             {notifCount > 0 && (
               <motion.span
                 initial={{ scale: 0 }}
@@ -144,9 +144,9 @@ export default function TopBar() {
             <motion.button
               onClick={() => setQuickAddOpen(!quickAddOpen)}
               whileTap={{ scale: 0.88 }}
-              className="w-10 h-10 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[var(--shadow-primary)] hover:shadow-[0_8px_30px_-6px_hsl(var(--primary)/0.5)] transition-shadow touch-manipulation"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[var(--shadow-primary)] hover:shadow-[0_8px_30px_-6px_hsl(var(--primary)/0.5)] transition-shadow touch-manipulation"
             >
-              <Plus size={18} className={`transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} />
+              <Plus size={16} className={`transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} />
             </motion.button>
 
             <AnimatePresence>

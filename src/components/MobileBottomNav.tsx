@@ -1,7 +1,7 @@
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { Home, CheckSquare, FileText, Globe, Grip, DollarSign, Calendar, Timer, Lightbulb, KeyRound, Settings, Search, Flame } from 'lucide-react';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 
 const primaryTabs = [
@@ -45,7 +45,6 @@ export default function MobileBottomNav() {
     }
   };
 
-  // Bottom sheet drag-to-dismiss
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.velocity.y > 300 || info.offset.y > 120) {
       setMoreOpen(false);
@@ -62,7 +61,7 @@ export default function MobileBottomNav() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-md lg:hidden"
               onClick={() => setMoreOpen(false)}
             />
             <motion.div
@@ -75,27 +74,35 @@ export default function MobileBottomNav() {
               dragElastic={{ top: 0, bottom: 0.5 }}
               onDragEnd={handleDragEnd}
               style={{ y: dragY, opacity: sheetOpacity }}
-              className="fixed bottom-[72px] left-0 right-0 z-50 bg-card rounded-t-3xl border-t border-x border-border/50 shadow-[var(--shadow-xl)] lg:hidden"
+              className="fixed bottom-[72px] left-0 right-0 z-50 bg-card/98 backdrop-blur-2xl rounded-t-[28px] border-t border-x border-border/30 shadow-[0_-8px_40px_rgba(0,0,0,0.2)] lg:hidden"
             >
               {/* Drag handle */}
-              <div className="flex justify-center py-3">
-                <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-12 h-1.5 rounded-full bg-muted-foreground/15" />
+              </div>
+
+              {/* Section title */}
+              <div className="px-5 pb-2">
+                <span className="text-[10px] font-bold tracking-widest text-muted-foreground/40 uppercase">All Sections</span>
               </div>
 
               {/* Grid of items */}
-              <div className="px-3 pb-4">
-                <div className="grid grid-cols-4 gap-1">
-                  {moreItems.map(item => (
+              <div className="px-3 pb-5">
+                <div className="grid grid-cols-4 gap-1.5">
+                  {moreItems.map((item, i) => (
                     <motion.button
                       key={item.id}
                       onClick={() => handleTab(item.id)}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.025, duration: 0.2 }}
                       whileTap={{ scale: 0.88 }}
-                      className={`flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all touch-manipulation
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all touch-manipulation
                         ${activeSection === item.id
-                          ? 'bg-primary/8 text-primary shadow-sm'
+                          ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
                           : 'text-muted-foreground active:bg-secondary/80'}`}
                     >
-                      <span className="text-2xl">{item.emoji}</span>
+                      <span className="text-[22px] leading-none">{item.emoji}</span>
                       <span className="text-[10px] font-semibold leading-tight">{item.label}</span>
                     </motion.button>
                   ))}
@@ -108,8 +115,8 @@ export default function MobileBottomNav() {
 
       {/* Bottom tab bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden">
-        <div className="bg-card/95 backdrop-blur-2xl border-t border-border/40 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.12)]">
-          <div className="flex items-center justify-around h-14">
+        <div className="bg-card/90 backdrop-blur-3xl border-t border-border/25 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_24px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center justify-around h-16">
             {primaryTabs.map(tab => {
               const isActive = tab.id === 'more' ? moreOpen : activeSection === tab.id;
               const Icon = tab.icon;
@@ -117,23 +124,30 @@ export default function MobileBottomNav() {
                 <motion.button
                   key={tab.id}
                   onClick={() => handleTab(tab.id)}
-                  whileTap={{ scale: 0.85 }}
-                  className={`relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors touch-manipulation
-                    ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
+                  whileTap={{ scale: 0.82 }}
+                  className={`relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all duration-200 touch-manipulation
+                    ${isActive ? 'text-primary' : 'text-muted-foreground/60'}`}
                 >
                   <div className="relative">
-                    <Icon size={20} strokeWidth={isActive ? 2.2 : 1.6} />
+                    <motion.div
+                      animate={isActive ? { scale: [1, 1.15, 1] } : {}}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Icon size={21} strokeWidth={isActive ? 2.4 : 1.5} />
+                    </motion.div>
                     {tab.id === 'tasks' && openTasks > 0 && (
-                      <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
+                      <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-1 shadow-sm">
                         {openTasks > 9 ? '9+' : openTasks}
                       </span>
                     )}
                   </div>
-                  <span className={`text-[10px] font-semibold leading-tight ${isActive ? 'text-primary' : ''}`}>{tab.label}</span>
+                  <span className={`text-[10px] font-semibold leading-none transition-colors ${isActive ? 'text-primary' : ''}`}>
+                    {tab.label}
+                  </span>
                   {isActive && tab.id !== 'more' && (
                     <motion.div
                       layoutId="bottomTabIndicator"
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"
+                      className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-primary rounded-b-full"
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
                   )}
