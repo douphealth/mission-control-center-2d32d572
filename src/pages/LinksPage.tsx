@@ -18,9 +18,8 @@ export default function LinksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyLink);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<LinkItem>();
+  const cd = useConfirmDialog();
 
   const categories = ["all", ...Array.from(new Set(links.map(l => l.category)))];
   const filtered = links
