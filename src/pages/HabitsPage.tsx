@@ -66,10 +66,16 @@ export default function HabitsPage() {
 
     const openAdd = () => { setEditId(null); setForm({ ...emptyForm, createdAt: today }); setModalOpen(true); };
     const openEdit = (h: HabitTracker) => { setEditId(h.id); const { id, ...rest } = h; setForm(rest); setModalOpen(true); };
+    const cd = useConfirmDialog();
     const handleDelete = async (id: string) => {
-        if (!confirm("Delete this habit and all its data?")) return;
-        await deleteItem("habits", id);
-        toast.success("Habit deleted");
+        cd.confirm({
+            title: "Delete Habit",
+            description: "This habit and all its tracking data will be permanently removed.",
+            onConfirm: async () => {
+                await deleteItem("habits", id);
+                toast.success("Habit deleted");
+            },
+        });
     };
     const handleDuplicate = async (id: string) => {
         const newId = await duplicateItem("habits", id, { completions: [], streak: 0 });
