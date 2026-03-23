@@ -95,20 +95,20 @@ export default function HabitsPage() {
     }, [bulk, deleteItem]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6">
             <div className="section-header">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Flame size={22} className="text-orange-500" /> Habit Tracker
+                    <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                        <Flame size={20} className="text-orange-500" /> Habit Tracker
                     </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5">Build streaks, track progress, become unstoppable</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Build streaks, track progress</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={bulk.toggleBulkMode}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
-                        <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
+                        className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+                        <CheckSquare size={14} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
                     </button>
-                    <button onClick={openAdd} className="btn-primary"><Plus size={15} /> New Habit</button>
+                    <button onClick={openAdd} className="btn-primary text-xs sm:text-sm"><Plus size={14} /> <span className="hidden sm:inline">New</span> Habit</button>
                 </div>
             </div>
 
