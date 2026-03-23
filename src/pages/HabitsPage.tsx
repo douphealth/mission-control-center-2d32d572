@@ -188,13 +188,13 @@ export default function HabitsPage() {
                                             <span className="badge-muted capitalize">{h.frequency}</span>
                                             {(h.streak || 0) > 0 && <span className="text-[10px] font-bold text-orange-500 flex items-center gap-0.5"><Flame size={9} /> {h.streak} day streak</span>}
                                         </div>
-                                        <div className="flex gap-1 mt-2">
+                                        <div className="flex gap-0.5 sm:gap-1 mt-2 overflow-x-auto hide-scrollbar">
                                             {last14.map(day => {
                                                 const done = (h.completions || []).includes(day);
                                                 const isToday = day === today;
                                                 return (
                                                     <div key={day} title={day}
-                                                        className={`w-5 h-5 rounded-md transition-all ${!bulk.bulkMode ? 'cursor-pointer' : ''} ${done ? `opacity-90` : isToday ? "bg-primary/10 border-2 border-primary/20" : "bg-secondary border border-border/30"}`}
+                                                        className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md sm:rounded-md flex-shrink-0 transition-all ${!bulk.bulkMode ? 'cursor-pointer' : ''} ${done ? `opacity-90` : isToday ? "bg-primary/10 border-2 border-primary/20" : "bg-secondary border border-border/30"}`}
                                                         style={done ? { background: h.color || "#3b82f6" } : {}}
                                                         onClick={!bulk.bulkMode ? (e) => { e.stopPropagation(); toggleToday(h); } : undefined}
                                                     />
