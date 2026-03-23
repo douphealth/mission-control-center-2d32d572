@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import FormModal, { FormField, FormInput, FormSelect, FormTextarea } from "@/components/FormModal";
 import { toast } from "sonner";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
 // OpenClaw = generic service/API tracker — user can track any service
 interface ServiceEntry {
