@@ -586,99 +586,103 @@ function ListRow({ task, onEdit, onDelete, onDuplicate, onToggle, onToggleSub, i
       transition={{ delay: index * 0.02 }}
       layout>
       <div className={`
-        flex items-center gap-3 px-4 py-3.5 rounded-2xl border group transition-all
+        rounded-2xl border group transition-all
         hover:border-primary/20 hover:bg-secondary/20 hover:shadow-md
         ${task.status === "done" ? "opacity-55" : ""}
-        ${overdue ? "border-red-500/30 bg-red-500/5" : "border-border/30 bg-card/60"}
+        ${overdue ? "border-destructive/30 bg-destructive/5" : "border-border/30 bg-card/60"}
       `}
         style={{ borderLeft: `3px solid ${pr.color}` }}>
 
-        {/* Toggle */}
-        <button onClick={onToggle}
-          className="shrink-0 transition-all hover:scale-110"
-          style={{ color: task.status === "done" ? "#10b981" : "#6b7280" }}>
-          {task.status === "done" ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-        </button>
+        {/* Main row */}
+        <div className="flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3.5">
+          {/* Toggle */}
+          <button onClick={onToggle}
+            className="shrink-0 transition-all hover:scale-110 touch-manipulation p-1"
+            style={{ color: task.status === "done" ? "hsl(var(--success))" : "hsl(var(--muted-foreground))" }}>
+            {task.status === "done" ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+          </button>
 
-        {/* Main content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className={`text-sm font-semibold ${task.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>
-              {task.title}
-            </span>
-            {task.linkedProject && (
-              <span className="text-[10px] text-purple-400 font-medium shrink-0">↳ {task.linkedProject}</span>
-            )}
+          {/* Main content */}
+          <div className="flex-1 min-w-0" onClick={onEdit} role="button" tabIndex={0}>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className={`text-sm font-semibold truncate ${task.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                {task.title}
+              </span>
+            </div>
+            {/* Mobile-visible meta row */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${pr.bg}`}>{pr.label}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold sm:hidden"
+                style={{ background: st.color + "22", color: st.color }}>
+                {st.label}
+              </span>
+              {task.category && <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">· {task.category}</span>}
+              {task.linkedProject && (
+                <span className="text-[10px] text-primary/60 font-medium truncate max-w-[80px] hidden sm:inline">↳ {task.linkedProject}</span>
+              )}
+            </div>
           </div>
-          {task.description && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">{task.description}</p>
+
+          {/* Subtasks mini */}
+          {task.subtasks.length > 0 && (
+            <button onClick={() => setExpanded(e => !e)}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0 bg-secondary px-2 py-1 rounded-lg touch-manipulation">
+              <CheckSquare size={10} />
+              {doneSubs}/{task.subtasks.length}
+              <ChevronDown size={9} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
+            </button>
           )}
-        </div>
 
-        {/* Subtasks mini */}
-        {task.subtasks.length > 0 && (
-          <button onClick={() => setExpanded(e => !e)}
-            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0 bg-secondary px-2 py-1 rounded-lg">
-            <CheckSquare size={10} />
-            {doneSubs}/{task.subtasks.length}
-            <ChevronDown size={9} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </button>
-        )}
-
-        {/* Status */}
-        <span className="text-[10px] px-2 py-1 rounded-lg font-semibold shrink-0 hidden sm:inline-flex"
-          style={{ background: st.color + "22", color: st.color }}>
-          {st.label}
-        </span>
-
-        {/* Priority */}
-        <span className={`text-[10px] px-2 py-1 rounded-lg font-semibold shrink-0 hidden md:inline-flex ${pr.bg}`}>
-          {pr.label}
-        </span>
-
-        {/* Category */}
-        {task.category && (
-          <span className="text-[10px] px-2 py-1 rounded-lg bg-secondary text-muted-foreground font-medium hidden lg:inline-flex shrink-0">
-            {task.category}
+          {/* Status — desktop only */}
+          <span className="text-[10px] px-2 py-1 rounded-lg font-semibold shrink-0 hidden sm:inline-flex"
+            style={{ background: st.color + "22", color: st.color }}>
+            {st.label}
           </span>
-        )}
 
-        {/* Due date */}
-        <span className={`text-[11px] font-semibold shrink-0 ${overdue ? "text-red-400" : isToday(task) ? "text-amber-400" : "text-muted-foreground"}`}>
-          {task.dueDate ? daysUntil(task.dueDate) : "—"}
-        </span>
+          {/* Priority — desktop only */}
+          <span className={`text-[10px] px-2 py-1 rounded-lg font-semibold shrink-0 hidden md:inline-flex ${pr.bg}`}>
+            {pr.label}
+          </span>
 
-        {/* Actions */}
-        <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={onDuplicate} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-colors touch-manipulation" title="Duplicate">
-            <Copy size={14} />
-          </button>
-          <button onClick={onEdit} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
-            <Edit2 size={14} />
-          </button>
-          <button onClick={onDelete} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors touch-manipulation">
-            <Trash2 size={14} />
-          </button>
+          {/* Due date */}
+          <span className={`text-[11px] font-semibold shrink-0 ${overdue ? "text-destructive" : isToday(task) ? "text-warning" : "text-muted-foreground/50"}`}>
+            {task.dueDate ? daysUntil(task.dueDate) : "—"}
+          </span>
+
+          {/* Actions — always visible on mobile */}
+          <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+            <button onClick={onDuplicate} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation" title="Duplicate">
+              <Copy size={13} />
+            </button>
+            <button onClick={onEdit} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation">
+              <Edit2 size={13} />
+            </button>
+            <button onClick={onDelete} className="p-2 sm:p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors touch-manipulation">
+              <Trash2 size={13} />
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Subtasks expanded */}
-      <AnimatePresence>
-        {expanded && task.subtasks.length > 0 && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden ml-8 mt-1 space-y-1 mb-1">
-            {task.subtasks.map(sub => (
-              <button key={sub.id} type="button" onClick={() => onToggleSub(sub.id)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/40 w-full text-left group/sub hover:bg-secondary/70 transition-colors">
-                <span style={{ color: sub.done ? "#10b981" : "#9ca3af" }}>
-                  {sub.done ? <CheckCircle2 size={13} /> : <Circle size={13} />}
-                </span>
-                <span className={`text-xs transition-colors ${sub.done ? "line-through text-muted-foreground" : "text-foreground group-hover/sub:text-foreground"}`}>{sub.title}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Subtasks expanded */}
+        <AnimatePresence>
+          {expanded && task.subtasks.length > 0 && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-border/20 mx-3 sm:mx-4">
+              <div className="py-2 space-y-1">
+                {task.subtasks.map(sub => (
+                  <button key={sub.id} type="button" onClick={() => onToggleSub(sub.id)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/40 w-full text-left group/sub hover:bg-secondary/70 transition-colors touch-manipulation">
+                    <span style={{ color: sub.done ? "hsl(var(--success))" : "hsl(var(--muted-foreground))" }}>
+                      {sub.done ? <CheckCircle2 size={13} /> : <Circle size={13} />}
+                    </span>
+                    <span className={`text-xs transition-colors ${sub.done ? "line-through text-muted-foreground" : "text-foreground group-hover/sub:text-foreground"}`}>{sub.title}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
