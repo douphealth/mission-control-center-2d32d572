@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import type { Task } from "@/lib/db";
 import { REMINDER_LABELS, getReminderLabel, requestNotificationPermission } from "@/lib/notifications";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
