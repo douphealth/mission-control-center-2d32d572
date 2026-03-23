@@ -28,9 +28,8 @@ export default function IdeasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyIdea);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<Idea>();
+  const cd = useConfirmDialog();
 
   const filtered = ideas
     .filter(i => filterStatus === "all" || i.status === filterStatus)
