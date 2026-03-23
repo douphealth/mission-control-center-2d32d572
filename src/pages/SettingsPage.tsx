@@ -196,15 +196,15 @@ export default function SettingsPage() {
   const fadeIn = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.25 } };
 
   return (
-    <div className="space-y-5 max-w-4xl">
+    <div className="space-y-4 sm:space-y-5 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Manage your Mission Control preferences, sync, and security</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Settings</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Manage your Mission Control preferences, sync, and security</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
-        {/* Sidebar nav */}
-        <div className="lg:w-52 flex lg:flex-col gap-1 overflow-x-auto hide-scrollbar">
+        {/* Sidebar nav — horizontal scroll on mobile */}
+        <div className="lg:w-52 flex lg:flex-col gap-1 overflow-x-auto hide-scrollbar pb-1 lg:pb-0">
           {tabs.map(tab => (
             <button
               key={tab.id}
