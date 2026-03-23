@@ -68,11 +68,16 @@ export default function PaymentsPage() {
 
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    if (!confirm(`Delete ${bulk.selectedCount} payment(s)?`)) return;
-    updateData({ payments: payments.filter(p => !bulk.selectedIds.has(p.id)) });
-    toast.success(`${bulk.selectedCount} payments deleted`);
-    bulk.clearSelection();
-  }, [bulk, payments, updateData]);
+    cd.confirm({
+      title: `Delete ${bulk.selectedCount} Payment(s)`,
+      description: `This will permanently remove ${bulk.selectedCount} payment records.`,
+      onConfirm: () => {
+        updateData({ payments: payments.filter(p => !bulk.selectedIds.has(p.id)) });
+        toast.success(`${bulk.selectedCount} payments deleted`);
+        bulk.clearSelection();
+      },
+    });
+  }, [bulk, payments, updateData, cd]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     updateData({ payments: payments.map(p => bulk.selectedIds.has(p.id) ? { ...p, status: status as any } : p) });
