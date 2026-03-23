@@ -85,11 +85,11 @@ export default function SEOPage() {
   const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString();
 
   return (
-    <div className="space-y-6">
-      <div className="section-header">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Search size={22} className="text-primary" /> SEO Command Center
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Search size={20} className="text-primary" /> SEO Command Center
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">Monitor rankings, crawl health, and site performance</p>
         </div>

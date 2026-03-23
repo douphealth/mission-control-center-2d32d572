@@ -89,11 +89,11 @@ export default function OpenClawPage() {
   const uf = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   return (
-    <div className="space-y-6">
-      <div className="section-header">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Bug size={22} className="text-violet-500" /> OpenClaw
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Bug size={20} className="text-violet-500" /> OpenClaw
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">Track OpenClaw services and API endpoints</p>
         </div>
@@ -109,7 +109,7 @@ export default function OpenClawPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <div className="card-glass p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle2 size={17} className="text-emerald-500" />
@@ -165,7 +165,7 @@ export default function OpenClawPage() {
             <div className="text-[10px] text-muted-foreground flex items-center gap-1 shrink-0">
               <Clock size={9} /> {s.lastChecked}
             </div>
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
                 <Edit2 size={12} />
               </button>

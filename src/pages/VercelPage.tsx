@@ -61,12 +61,11 @@ export default function VercelPage() {
   const buildingCount = projects.filter(p => p.status === "building").length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="section-header">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Rocket size={22} className="text-foreground" /> Vercel Deployments
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Rocket size={20} className="text-foreground" /> Vercel Deployments
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">Monitor all deployments, preview URLs, and project health</p>
         </div>

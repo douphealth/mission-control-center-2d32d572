@@ -7,6 +7,7 @@ import type { Idea } from "@/lib/store";
 import { toast } from "sonner";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const statusConfig: Record<string, { label: string; icon: any; class: string; bg: string }> = {
   spark: { label: "Spark", icon: Sparkles, class: "badge-warning", bg: "from-warning/20 to-warning/5" },
@@ -27,6 +28,8 @@ export default function IdeasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyIdea);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<Idea>();
 
   const filtered = ideas
@@ -48,24 +51,32 @@ export default function IdeasPage() {
     }
     setModalOpen(false);
   };
-  const deleteIdea = (id: string) => {
-    if (!confirm("Delete this idea?")) return;
-    updateData({ ideas: ideas.filter(i => i.id !== id) });
-    toast.success("Idea deleted");
-  };
+  const deleteIdea = (id: string) => setPendingDeleteId(id);
   const duplicateIdea = async (id: string) => { const newId = await duplicateItem("ideas", id, { votes: 0 }); if (newId) toast.success("Idea duplicated"); };
   const upvote = (id: string) => {
     updateData({ ideas: ideas.map(i => i.id === id ? { ...i, votes: i.votes + 1 } : i) });
   };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
+  const closeDeleteDialog = useCallback(() => { setPendingDeleteId(null); setPendingBulkDelete(false); }, []);
+  const confirmDeleteSingle = useCallback(() => {
+    if (!pendingDeleteId) return;
+    updateData({ ideas: ideas.filter(i => i.id !== pendingDeleteId) });
+    toast.success("Idea deleted");
+    closeDeleteDialog();
+  }, [pendingDeleteId, ideas, updateData, closeDeleteDialog]);
+
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    if (!confirm(`Delete ${bulk.selectedCount} idea(s)?`)) return;
+    setPendingBulkDelete(true);
+  }, [bulk.selectedCount]);
+
+  const confirmBulkDelete = useCallback(() => {
     updateData({ ideas: ideas.filter(i => !bulk.selectedIds.has(i.id)) });
     toast.success(`${bulk.selectedCount} ideas deleted`);
     bulk.clearSelection();
-  }, [bulk, ideas, updateData]);
+    closeDeleteDialog();
+  }, [bulk, ideas, updateData, closeDeleteDialog]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     const now = new Date().toISOString().split("T")[0];
@@ -82,18 +93,18 @@ export default function IdeasPage() {
   }, [bulk, ideas, updateData]);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Ideas Board</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{ideas.length} ideas · {ideas.filter(i => i.status === "exploring" || i.status === "validated").length} active</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Ideas Board</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{ideas.length} ideas · {ideas.filter(i => i.status === "exploring" || i.status === "validated").length} active</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={bulk.toggleBulkMode}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all ${bulk.bulkMode ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/20'}`}>
             <CheckSquare size={15} /> {bulk.bulkMode ? 'Cancel' : 'Bulk'}
           </button>
-          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
+          <button onClick={openAdd} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition shadow-lg shadow-primary/20">
             <Lightbulb size={16} /> New Idea
           </button>
         </div>
@@ -114,7 +125,7 @@ export default function IdeasPage() {
       )}
 
       {/* Status pipeline overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
         {Object.entries(statusConfig).map(([key, cfg]) => {
           const count = ideas.filter(i => i.status === key).length;
           return (
@@ -128,12 +139,12 @@ export default function IdeasPage() {
         })}
       </div>
 
-      <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 max-w-sm">
+      <div className="flex items-center bg-secondary rounded-xl px-3 py-2 gap-2 w-full sm:max-w-sm">
         <Search size={14} className="text-muted-foreground" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search ideas..." className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {filtered.map((idea, i) => {
           const cfg = statusConfig[idea.status] || statusConfig.spark;
           return (
@@ -150,7 +161,7 @@ export default function IdeasPage() {
                     <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityDot[idea.priority]}`} />
                     <h3 className="font-semibold text-card-foreground text-sm truncate">{idea.title}</h3>
                   </div>
-                  <span className={cfg.class}>{cfg.label}</span>
+                  <span className={`${cfg.class} flex-shrink-0`}>{cfg.label}</span>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-3">{idea.description}</p>
                 {idea.tags.length > 0 && (
@@ -160,16 +171,16 @@ export default function IdeasPage() {
                 )}
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); upvote(idea.id); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-lg hover:bg-primary/10">
-                      <ThumbsUp size={12} /> {idea.votes}
+                    <button onClick={(e) => { e.stopPropagation(); upvote(idea.id); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10 touch-manipulation">
+                      <ThumbsUp size={13} /> {idea.votes}
                     </button>
                     <span className="badge-muted text-[10px]">{idea.category}</span>
                   </div>
                   {!bulk.bulkMode && (
-                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <button onClick={() => duplicateIdea(idea.id)} className="text-muted-foreground hover:text-blue-500 p-1" title="Duplicate"><Copy size={12} /></button>
-                       <button onClick={() => openEdit(idea)} className="text-muted-foreground hover:text-foreground p-1"><Edit2 size={12} /></button>
-                       <button onClick={() => deleteIdea(idea.id)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
+                     <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                       <button onClick={() => duplicateIdea(idea.id)} className="text-muted-foreground hover:text-blue-500 p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Duplicate"><Copy size={13} /></button>
+                       <button onClick={() => openEdit(idea)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-secondary transition-colors"><Edit2 size={13} /></button>
+                       <button onClick={() => deleteIdea(idea.id)} className="text-muted-foreground hover:text-destructive p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"><Trash2 size={13} /></button>
                      </div>
                   )}
                 </div>
@@ -190,7 +201,7 @@ export default function IdeasPage() {
       <FormModal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? "Edit Idea" : "New Idea"} onSubmit={saveForm}>
         <FormField label="Title *"><FormInput value={form.title} onChange={v => uf("title", v)} placeholder="Your brilliant idea" /></FormField>
         <FormField label="Description"><FormTextarea value={form.description} onChange={v => uf("description", v)} placeholder="Describe the idea in detail..." rows={3} /></FormField>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <FormField label="Priority">
             <FormSelect value={form.priority} onChange={v => uf("priority", v)} options={[{value:"high",label:"🔴 High"},{value:"medium",label:"🟡 Medium"},{value:"low",label:"🟢 Low"}]} />
           </FormField>
@@ -202,6 +213,21 @@ export default function IdeasPage() {
         </div>
         <FormField label="Tags"><FormTagsInput value={form.tags} onChange={v => uf("tags", v)} placeholder="Add tag and press Enter" /></FormField>
       </FormModal>
+
+      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBulkDelete ? `Delete ${bulk.selectedCount} idea(s)? This cannot be undone.` : "Delete this idea? This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

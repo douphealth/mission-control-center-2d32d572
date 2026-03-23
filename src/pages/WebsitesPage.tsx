@@ -397,7 +397,7 @@ export default function WebsitesPage() {
             <span className="flex items-center gap-1"><Clock size={9} /> Added {site.dateAdded}</span>
             <span className="flex items-center gap-1"><RefreshCw size={9} /> Updated {site.lastUpdated}</span>
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button onClick={() => duplicateWebsite(site.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-all" title="Duplicate">
               <Copy size={13} />
             </button>
