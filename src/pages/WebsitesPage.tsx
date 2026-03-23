@@ -66,8 +66,7 @@ export default function WebsitesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
+  const cd = useConfirmDialog();
   // ─── Derived data ──────────────────────────────────────────────
 
   const categories = useMemo(() => {
