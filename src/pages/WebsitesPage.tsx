@@ -1,4 +1,5 @@
 import { useDashboard } from "@/contexts/DashboardContext";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {

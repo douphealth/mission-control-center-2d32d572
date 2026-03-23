@@ -995,6 +995,7 @@ export default function TasksPage() {
         onSave={handleSave}
         onDelete={handleDelete}
       />
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }
