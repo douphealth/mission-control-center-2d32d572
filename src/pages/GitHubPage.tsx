@@ -19,9 +19,8 @@ export default function GitHubPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyRepo);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<GitHubRepo>();
+  const cd = useConfirmDialog();
 
   const filtered = repos.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase()));
 
