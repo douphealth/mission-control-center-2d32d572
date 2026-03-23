@@ -254,6 +254,19 @@
     color: white;
   }
 
+  /* ─── Elevated card ─── */
+  .card-elevated {
+    border-radius: 20px;
+    @apply border border-border/30 bg-card;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+  }
+
+  .card-elevated:hover {
+    box-shadow: var(--shadow-md);
+    border-color: hsl(var(--border) / 0.5);
+  }
+
   /* ─── Glass ─── */
   .card-glass {
     border-radius: 24px;
