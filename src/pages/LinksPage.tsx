@@ -160,20 +160,7 @@ export default function LinksPage() {
         </div>
       </FormModal>
 
-      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkDelete ? `Delete ${bulk.selectedCount} link(s)? This cannot be undone.` : "Delete this link? This cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }
