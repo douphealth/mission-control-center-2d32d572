@@ -25,9 +25,8 @@ export default function BuildsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBuild);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<BuildProject>();
+  const cd = useConfirmDialog();
 
   const filtered = buildProjects
     .filter((b: any) => filterPlatform === "all" || b.platform === filterPlatform)
