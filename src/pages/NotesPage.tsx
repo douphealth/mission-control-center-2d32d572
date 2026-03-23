@@ -6,6 +6,7 @@ import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
 const noteColors = ["blue", "amber", "green", "rose", "purple", "teal"];
 const colorMap: Record<string, { border: string; dot: string }> = {
