@@ -77,10 +77,10 @@ export default function TopBar() {
         <motion.button
           onClick={() => setCommandPaletteOpen(true)}
           whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2.5 flex-1 max-w-lg h-11 px-4 rounded-2xl bg-secondary/50 border border-border/20 hover:border-primary/20 hover:bg-secondary/70 transition-all duration-300 cursor-pointer group touch-manipulation"
+          className="flex items-center gap-2 sm:gap-2.5 flex-1 max-w-lg h-9 sm:h-11 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-secondary/50 border border-border/20 hover:border-primary/20 hover:bg-secondary/70 transition-all duration-300 cursor-pointer group touch-manipulation"
         >
-          <Search size={16} className="text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
-          <span className="text-sm text-muted-foreground/40 flex-1 text-left truncate">Search task</span>
+          <Search size={14} className="text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0 sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm text-muted-foreground/40 flex-1 text-left truncate">Search...</span>
           <div className="hidden md:flex items-center gap-1">
             <kbd className="text-[10px] text-muted-foreground/30 bg-card px-2 py-1 rounded-lg font-mono border border-border/30 shadow-sm">⌘ F</kbd>
           </div>
