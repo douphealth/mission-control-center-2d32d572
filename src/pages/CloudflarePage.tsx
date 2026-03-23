@@ -59,9 +59,8 @@ export default function CloudflarePage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="section-header">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Cloud size={22} className="text-orange-500" /> Cloudflare
