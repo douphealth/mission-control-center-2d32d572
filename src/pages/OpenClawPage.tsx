@@ -89,8 +89,8 @@ export default function OpenClawPage() {
   const uf = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   return (
-    <div className="space-y-6">
-      <div className="section-header">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Bug size={22} className="text-violet-500" /> OpenClaw
