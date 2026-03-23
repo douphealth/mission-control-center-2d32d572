@@ -7,6 +7,8 @@ import type { Payment } from "@/lib/store";
 import { toast } from "sonner";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const typeIcons: Record<string, string> = { income: "💰", expense: "💸", invoice: "📄", subscription: "🔄" };
 const statusBadge: Record<string, string> = { paid: "badge-success", pending: "badge-warning", overdue: "badge-destructive", cancelled: "badge-muted" };
@@ -21,6 +23,7 @@ export default function PaymentsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyPayment);
   const bulk = useBulkActions<Payment>();
+  const cd = useConfirmDialog();
 
   const filtered = payments
     .filter(p => filterType === "all" || p.type === filterType)
@@ -46,9 +49,14 @@ export default function PaymentsPage() {
     setModalOpen(false);
   };
   const deletePayment = (id: string) => {
-    if (!confirm("Delete this payment?")) return;
-    updateData({ payments: payments.filter(p => p.id !== id) });
-    toast.success("Payment deleted");
+    cd.confirm({
+      title: "Delete Payment",
+      description: "This payment record will be permanently removed.",
+      onConfirm: () => {
+        updateData({ payments: payments.filter(p => p.id !== id) });
+        toast.success("Payment deleted");
+      },
+    });
   };
   const duplicatePayment = async (id: string) => { const newId = await duplicateItem("payments", id, { status: "pending", paidDate: "" }); if (newId) toast.success("Payment duplicated"); };
   const markPaid = (id: string) => {
@@ -60,11 +68,16 @@ export default function PaymentsPage() {
 
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    if (!confirm(`Delete ${bulk.selectedCount} payment(s)?`)) return;
-    updateData({ payments: payments.filter(p => !bulk.selectedIds.has(p.id)) });
-    toast.success(`${bulk.selectedCount} payments deleted`);
-    bulk.clearSelection();
-  }, [bulk, payments, updateData]);
+    cd.confirm({
+      title: `Delete ${bulk.selectedCount} Payment(s)`,
+      description: `This will permanently remove ${bulk.selectedCount} payment records.`,
+      onConfirm: () => {
+        updateData({ payments: payments.filter(p => !bulk.selectedIds.has(p.id)) });
+        toast.success(`${bulk.selectedCount} payments deleted`);
+        bulk.clearSelection();
+      },
+    });
+  }, [bulk, payments, updateData, cd]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     updateData({ payments: payments.map(p => bulk.selectedIds.has(p.id) ? { ...p, status: status as any } : p) });
@@ -198,6 +211,7 @@ export default function PaymentsPage() {
         </div>
       )}
 
+      <ConfirmDialog {...cd.dialogProps} />
       <FormModal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? "Edit Payment" : "Add Payment"} onSubmit={saveForm} size="lg">
         <FormField label="Title *"><FormInput value={form.title} onChange={v => uf("title", v)} placeholder="Payment description" /></FormField>
         <div className="grid grid-cols-2 gap-4">

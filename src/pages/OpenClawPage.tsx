@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import FormModal, { FormField, FormInput, FormSelect, FormTextarea } from "@/components/FormModal";
 import { toast } from "sonner";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
 // OpenClaw = generic service/API tracker — user can track any service
 interface ServiceEntry {
@@ -80,10 +81,16 @@ export default function OpenClawPage() {
     setModalOpen(false);
   };
 
+  const cd = useConfirmDialog();
   const del = (id: string) => {
-    if (!confirm("Remove this service?")) return;
-    setServices(prev => prev.filter(s => s.id !== id));
-    toast.success("Removed");
+    cd.confirm({
+      title: "Remove Service",
+      description: "This service entry will be permanently removed.",
+      onConfirm: () => {
+        setServices(prev => prev.filter(s => s.id !== id));
+        toast.success("Removed");
+      },
+    });
   };
 
   const uf = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }));
@@ -224,6 +231,7 @@ export default function OpenClawPage() {
           <FormTextarea value={form.notes} onChange={v => uf("notes", v)} rows={2} placeholder="Additional notes..." />
         </FormField>
       </FormModal>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }

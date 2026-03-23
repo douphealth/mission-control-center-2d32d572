@@ -10,6 +10,7 @@ import FormModal, { FormField, FormInput, FormSelect } from "@/components/FormMo
 import { toast } from "sonner";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
 const ICONS = ["💪", "🏃", "📚", "🧘", "💧", "🍎", "😴", "🧠", "✍️", "📝", "🎯", "⚡", "🌅", "🚶", "🎨", "🎵", "💊", "🏋️", "🌿", "🧹"];
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#84cc16", "#f97316", "#6366f1"];
@@ -65,10 +66,16 @@ export default function HabitsPage() {
 
     const openAdd = () => { setEditId(null); setForm({ ...emptyForm, createdAt: today }); setModalOpen(true); };
     const openEdit = (h: HabitTracker) => { setEditId(h.id); const { id, ...rest } = h; setForm(rest); setModalOpen(true); };
+    const cd = useConfirmDialog();
     const handleDelete = async (id: string) => {
-        if (!confirm("Delete this habit and all its data?")) return;
-        await deleteItem("habits", id);
-        toast.success("Habit deleted");
+        cd.confirm({
+            title: "Delete Habit",
+            description: "This habit and all its tracking data will be permanently removed.",
+            onConfirm: async () => {
+                await deleteItem("habits", id);
+                toast.success("Habit deleted");
+            },
+        });
     };
     const handleDuplicate = async (id: string) => {
         const newId = await duplicateItem("habits", id, { completions: [], streak: 0 });
@@ -88,11 +95,16 @@ export default function HabitsPage() {
 
     const bulkDelete = useCallback(async () => {
         if (bulk.selectedCount === 0) return;
-        if (!confirm(`Delete ${bulk.selectedCount} habit(s)?`)) return;
-        for (const id of bulk.selectedIds) { await deleteItem("habits", id); }
-        toast.success(`${bulk.selectedCount} habits deleted`);
-        bulk.clearSelection();
-    }, [bulk, deleteItem]);
+        cd.confirm({
+            title: `Delete ${bulk.selectedCount} Habit(s)`,
+            description: `This will permanently remove ${bulk.selectedCount} habits and all their tracking data.`,
+            onConfirm: async () => {
+                for (const id of bulk.selectedIds) { await deleteItem("habits", id); }
+                toast.success(`${bulk.selectedCount} habits deleted`);
+                bulk.clearSelection();
+            },
+        });
+    }, [bulk, deleteItem, cd]);
 
     return (
         <div className="space-y-5 sm:space-y-6">
@@ -237,6 +249,7 @@ export default function HabitsPage() {
                     </div>
                 </FormField>
             </FormModal>
+            <ConfirmDialog {...cd.dialogProps} />
         </div>
     );
 }
