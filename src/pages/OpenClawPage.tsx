@@ -109,7 +109,7 @@ export default function OpenClawPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <div className="card-glass p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle2 size={17} className="text-emerald-500" />
