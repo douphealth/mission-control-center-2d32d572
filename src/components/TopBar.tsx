@@ -86,32 +86,32 @@ export default function TopBar() {
           </div>
         </motion.button>
 
-        <div className="flex items-center gap-1.5 ml-auto">
-          {/* Action buttons — clean icon-only style */}
+        <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
+          {/* Action buttons — hidden on mobile for cleaner bar */}
           <motion.button
             onClick={() => setImportModalOpen(true)}
             whileTap={{ scale: 0.9 }}
-            className="flex items-center justify-center w-10 h-10 rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
+            className="hidden sm:flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
             title="Import"
           >
-            <Mail size={18} />
+            <Mail size={16} />
           </motion.button>
 
           <motion.button
             onClick={handleExport}
             whileTap={{ scale: 0.9 }}
-            className="flex items-center justify-center w-10 h-10 rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
+            className="hidden sm:flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
             title="Export"
           >
-            <Download size={18} />
+            <Download size={16} />
           </motion.button>
 
-          {/* Notifications — with count badge */}
+          {/* Notifications */}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            className="relative flex items-center justify-center w-10 h-10 rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
+            className="relative flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
           >
-            <Bell size={18} />
+            <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
             {notifCount > 0 && (
               <motion.span
                 initial={{ scale: 0 }}
