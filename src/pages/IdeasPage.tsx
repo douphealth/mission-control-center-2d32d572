@@ -7,7 +7,7 @@ import type { Idea } from "@/lib/store";
 import { toast } from "sonner";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
 const statusConfig: Record<string, { label: string; icon: any; class: string; bg: string }> = {
   spark: { label: "Spark", icon: Sparkles, class: "badge-warning", bg: "from-warning/20 to-warning/5" },
@@ -28,9 +28,8 @@ export default function IdeasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyIdea);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<Idea>();
+  const cd = useConfirmDialog();
 
   const filtered = ideas
     .filter(i => filterStatus === "all" || i.status === filterStatus)
@@ -51,32 +50,19 @@ export default function IdeasPage() {
     }
     setModalOpen(false);
   };
-  const deleteIdea = (id: string) => setPendingDeleteId(id);
+  const deleteIdea = (id: string) => {
+    cd.confirm({ title: "Delete Idea", description: "This idea will be permanently removed.", onConfirm: () => { updateData({ ideas: ideas.filter(i => i.id !== id) }); toast.success("Idea deleted"); } });
+  };
   const duplicateIdea = async (id: string) => { const newId = await duplicateItem("ideas", id, { votes: 0 }); if (newId) toast.success("Idea duplicated"); };
   const upvote = (id: string) => {
     updateData({ ideas: ideas.map(i => i.id === id ? { ...i, votes: i.votes + 1 } : i) });
   };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
-  const closeDeleteDialog = useCallback(() => { setPendingDeleteId(null); setPendingBulkDelete(false); }, []);
-  const confirmDeleteSingle = useCallback(() => {
-    if (!pendingDeleteId) return;
-    updateData({ ideas: ideas.filter(i => i.id !== pendingDeleteId) });
-    toast.success("Idea deleted");
-    closeDeleteDialog();
-  }, [pendingDeleteId, ideas, updateData, closeDeleteDialog]);
-
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    setPendingBulkDelete(true);
-  }, [bulk.selectedCount]);
-
-  const confirmBulkDelete = useCallback(() => {
-    updateData({ ideas: ideas.filter(i => !bulk.selectedIds.has(i.id)) });
-    toast.success(`${bulk.selectedCount} ideas deleted`);
-    bulk.clearSelection();
-    closeDeleteDialog();
-  }, [bulk, ideas, updateData, closeDeleteDialog]);
+    cd.confirm({ title: `Delete ${bulk.selectedCount} Idea(s)`, description: `This will permanently remove ${bulk.selectedCount} ideas.`, onConfirm: () => { updateData({ ideas: ideas.filter(i => !bulk.selectedIds.has(i.id)) }); toast.success(`${bulk.selectedCount} ideas deleted`); bulk.clearSelection(); } });
+  }, [bulk, ideas, updateData, cd]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     const now = new Date().toISOString().split("T")[0];
@@ -214,20 +200,7 @@ export default function IdeasPage() {
         <FormField label="Tags"><FormTagsInput value={form.tags} onChange={v => uf("tags", v)} placeholder="Add tag and press Enter" /></FormField>
       </FormModal>
 
-      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkDelete ? `Delete ${bulk.selectedCount} idea(s)? This cannot be undone.` : "Delete this idea? This cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }

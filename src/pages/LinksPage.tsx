@@ -6,7 +6,7 @@ import FormModal, { FormField, FormInput, FormTextarea, FormSelect } from "@/com
 import type { LinkItem } from "@/lib/store";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 
 const emptyLink: Omit<LinkItem, "id"> = { title: "", url: "", category: "Tools", status: "active", description: "", dateAdded: new Date().toISOString().split("T")[0], pinned: false };
@@ -18,9 +18,8 @@ export default function LinksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyLink);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const bulk = useBulkActions<LinkItem>();
+  const cd = useConfirmDialog();
 
   const categories = ["all", ...Array.from(new Set(links.map(l => l.category)))];
   const filtered = links
@@ -40,29 +39,16 @@ export default function LinksPage() {
     setModalOpen(false);
   };
   const togglePin = (id: string) => updateData({ links: links.map(l => l.id === id ? { ...l, pinned: !l.pinned } : l) });
-  const deleteLink = (id: string) => setPendingDeleteId(id);
+  const deleteLink = (id: string) => {
+    cd.confirm({ title: "Delete Link", description: "This link will be permanently removed.", onConfirm: () => { updateData({ links: links.filter(l => l.id !== id) }); toast.success("Link deleted"); } });
+  };
   const duplicateLink = async (id: string) => { const newId = await duplicateItem("links", id); if (newId) toast.success("Link duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
-  const closeDeleteDialog = useCallback(() => { setPendingDeleteId(null); setPendingBulkDelete(false); }, []);
-  const confirmDeleteSingle = useCallback(() => {
-    if (!pendingDeleteId) return;
-    updateData({ links: links.filter(l => l.id !== pendingDeleteId) });
-    toast.success("Link deleted");
-    closeDeleteDialog();
-  }, [pendingDeleteId, links, updateData, closeDeleteDialog]);
-
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    setPendingBulkDelete(true);
-  }, [bulk.selectedCount]);
-
-  const confirmBulkDelete = useCallback(() => {
-    updateData({ links: links.filter(l => !bulk.selectedIds.has(l.id)) });
-    toast.success(`${bulk.selectedCount} links deleted`);
-    bulk.clearSelection();
-    closeDeleteDialog();
-  }, [bulk, links, updateData, closeDeleteDialog]);
+    cd.confirm({ title: `Delete ${bulk.selectedCount} Link(s)`, description: `This will permanently remove ${bulk.selectedCount} links.`, onConfirm: () => { updateData({ links: links.filter(l => !bulk.selectedIds.has(l.id)) }); toast.success(`${bulk.selectedCount} links deleted`); bulk.clearSelection(); } });
+  }, [bulk, links, updateData, cd]);
 
   const bulkUpdateCategory = useCallback((cat: string) => {
     updateData({ links: links.map(l => bulk.selectedIds.has(l.id) ? { ...l, category: cat } : l) });
@@ -174,20 +160,7 @@ export default function LinksPage() {
         </div>
       </FormModal>
 
-      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkDelete ? `Delete ${bulk.selectedCount} link(s)? This cannot be undone.` : "Delete this link? This cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog {...cd.dialogProps} />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { useBulkActions } from "@/hooks/useBulkActions";
 import BulkActionBar from "@/components/BulkActionBar";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const CATEGORIES = ["General", "Infrastructure", "Hosting", "Development", "Payments", "Social", "Email", "Analytics", "AI Tools", "Other"];
 
@@ -312,20 +312,13 @@ export default function CredentialsPage() {
         </div>
       </FormModal>
 
-      <AlertDialog open={pendingBulkDelete || pendingDeleteId !== null} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkDelete ? `Delete ${bulk.selectedCount} credential(s)? This cannot be undone.` : "Delete this credential? This cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={pendingBulkDelete || pendingDeleteId !== null}
+        onOpenChange={(open) => { if (!open) { setPendingDeleteId(null); setPendingBulkDelete(false); } }}
+        title={pendingBulkDelete ? `Delete ${bulk.selectedCount} Credential(s)` : "Delete Credential"}
+        description={pendingBulkDelete ? `This will permanently remove ${bulk.selectedCount} credentials.` : "This credential will be permanently removed."}
+        onConfirm={pendingBulkDelete ? confirmBulkDelete : confirmDeleteSingle}
+      />
     </div>
   );
 }
