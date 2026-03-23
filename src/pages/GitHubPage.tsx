@@ -35,34 +35,16 @@ export default function GitHubPage() {
     }
     setModalOpen(false);
   };
-  const deleteRepo = (id: string) => setPendingDeleteId(id);
+  const deleteRepo = (id: string) => {
+    cd.confirm({ title: "Delete Repository", description: "This repository entry will be permanently removed.", onConfirm: () => { updateData({ repos: repos.filter(r => r.id !== id) }); toast.success("Repository deleted"); } });
+  };
   const duplicateRepo = async (id: string) => { const newId = await duplicateItem("repos", id); if (newId) toast.success("Repo duplicated"); };
   const uf = (field: keyof typeof form, val: any) => setForm(f => ({ ...f, [field]: val }));
 
-  const closeDeleteDialog = useCallback(() => {
-    setPendingDeleteId(null);
-    setPendingBulkDelete(false);
-  }, []);
-
-  const confirmDeleteSingle = useCallback(() => {
-    if (!pendingDeleteId) return;
-    updateData({ repos: repos.filter(r => r.id !== pendingDeleteId) });
-    toast.success("Repository deleted");
-    closeDeleteDialog();
-  }, [pendingDeleteId, repos, updateData, closeDeleteDialog]);
-
   const bulkDelete = useCallback(() => {
     if (bulk.selectedCount === 0) return;
-    setPendingBulkDelete(true);
-  }, [bulk.selectedCount]);
-
-  const confirmBulkDelete = useCallback(() => {
-    if (bulk.selectedCount === 0) return;
-    updateData({ repos: repos.filter(r => !bulk.selectedIds.has(r.id)) });
-    toast.success(`${bulk.selectedCount} repos deleted`);
-    bulk.clearSelection();
-    closeDeleteDialog();
-  }, [bulk, repos, updateData, closeDeleteDialog]);
+    cd.confirm({ title: `Delete ${bulk.selectedCount} Repo(s)`, description: `This will permanently remove ${bulk.selectedCount} repositories.`, onConfirm: () => { updateData({ repos: repos.filter(r => !bulk.selectedIds.has(r.id)) }); toast.success(`${bulk.selectedCount} repos deleted`); bulk.clearSelection(); } });
+  }, [bulk, repos, updateData, cd]);
 
   const bulkUpdateStatus = useCallback((status: string) => {
     updateData({ repos: repos.map(r => bulk.selectedIds.has(r.id) ? { ...r, status: status as any } : r) });
