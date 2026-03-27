@@ -1,8 +1,18 @@
 /**
- * Smart Import Engine v14.0 — Ultra-autonomous, content-aware, multi-category detection.
- * v14: TRANSPOSED TABLE DETECTION — when columns represent records (not rows),
- *      the engine auto-detects and transposes before processing.
- *      Handles spreadsheet-style data where Row1=field names, Col2..N=records.
+ * Smart Import Engine v15.0 — Ultra-autonomous, content-aware, multi-category,
+ * NLP-enhanced detection with natural language parsing.
+ *
+ * v15 NEW:
+ * - MULTI-CATEGORY SPLIT: Mixed data auto-splits into separate categories
+ * - NLP DATE PARSING: "tomorrow", "next Monday", "March 5th", "in 3 days"
+ * - NLP PRIORITY/STATUS: Extracts priority & status from natural language
+ * - MARKDOWN TABLE SUPPORT: Parses |col|col| markdown tables
+ * - HTML TABLE SUPPORT: Parses <table> HTML
+ * - SMART VALUE INFERENCE: Infers types from content patterns
+ * - EMAIL/CONTACT EXTRACTION: Detects emails, phone numbers
+ * - MULTI-BLOCK MIXED DATA: Each block can be a different category
+ * - FUZZY FIELD MATCHING: Levenshtein-based field name matching
+ * - EXPRESS IMPORT: High-confidence data can skip review
  */
 import Papa from 'papaparse';
 
@@ -194,6 +204,8 @@ function normalize(s: string): string {
 }
 
 const URL_REGEX = /https?:\/\/[^\s,;"'<>)}\]]+/gi;
+const EMAIL_REGEX = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+const CURRENCY_REGEX = /(?:[$€£¥₹])\s*[\d,.]+|[\d,.]+\s*(?:USD|EUR|GBP|JPY|INR|AUD|CAD)/gi;
 
 function extractHostname(url: string): string {
   try {
@@ -205,7 +217,6 @@ function extractHostname(url: string): string {
 }
 
 function prettifyHostname(hostname: string): string {
-  // "docs.google.com" → "Docs Google", "my-site.com" → "My Site"
   return hostname
     .replace(/\.(com|org|net|io|dev|co|app|me|info|biz|xyz|site|online|store|tech|ai|gg|tv|us|uk|de|fr|es|it|nl|br|ca|au|jp|kr|ru|in|cn)(\.[a-z]{2,3})?$/i, '')
     .split(/[.\-_]/)
@@ -213,69 +224,388 @@ function prettifyHostname(hostname: string): string {
     .join(' ');
 }
 
+// ─── NLP Date Parsing ─────────────────────────────────────────────────────────
+
+function parseNaturalDate(text: string): string | null {
+  if (!text) return null;
+  const t = text.toLowerCase().trim();
+  const now = new Date();
+
+  // ISO / standard date formats
+  const isoMatch = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoMatch) return t;
+  const slashMatch = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (slashMatch) {
+    const y = slashMatch[3].length === 2 ? '20' + slashMatch[3] : slashMatch[3];
+    return `${y}-${slashMatch[1].padStart(2, '0')}-${slashMatch[2].padStart(2, '0')}`;
+  }
+
+  // Relative dates
+  if (t === 'today' || t === 'now') return formatDate(now);
+  if (t === 'tomorrow' || t === 'tmr' || t === 'tmrw') return formatDate(addDays(now, 1));
+  if (t === 'yesterday') return formatDate(addDays(now, -1));
+
+  // "in X days/weeks/months"
+  const inMatch = t.match(/in\s+(\d+)\s+(day|week|month|hour|min)s?/);
+  if (inMatch) {
+    const n = parseInt(inMatch[1]);
+    if (inMatch[2] === 'day') return formatDate(addDays(now, n));
+    if (inMatch[2] === 'week') return formatDate(addDays(now, n * 7));
+    if (inMatch[2] === 'month') { now.setMonth(now.getMonth() + n); return formatDate(now); }
+    return formatDate(addDays(now, 1));
+  }
+
+  // "next Monday/Tuesday/etc"
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const shortDays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const nextMatch = t.match(/next\s+(\w+)/);
+  if (nextMatch) {
+    let targetDay = dayNames.indexOf(nextMatch[1]);
+    if (targetDay === -1) targetDay = shortDays.indexOf(nextMatch[1]);
+    if (targetDay !== -1) {
+      const currentDay = now.getDay();
+      let daysAhead = targetDay - currentDay;
+      if (daysAhead <= 0) daysAhead += 7;
+      return formatDate(addDays(now, daysAhead));
+    }
+    if (nextMatch[1] === 'week') return formatDate(addDays(now, 7));
+    if (nextMatch[1] === 'month') { now.setMonth(now.getMonth() + 1); return formatDate(now); }
+  }
+
+  // "this Friday", "this weekend"
+  const thisMatch = t.match(/this\s+(\w+)/);
+  if (thisMatch) {
+    let targetDay = dayNames.indexOf(thisMatch[1]);
+    if (targetDay === -1) targetDay = shortDays.indexOf(thisMatch[1]);
+    if (targetDay !== -1) {
+      const currentDay = now.getDay();
+      let daysAhead = targetDay - currentDay;
+      if (daysAhead < 0) daysAhead += 7;
+      return formatDate(addDays(now, daysAhead));
+    }
+    if (thisMatch[1] === 'weekend') {
+      const daysToSat = (6 - now.getDay() + 7) % 7 || 7;
+      return formatDate(addDays(now, daysToSat));
+    }
+  }
+
+  // "end of week/month"
+  if (t.includes('end of week') || t === 'eow') {
+    const daysToFri = (5 - now.getDay() + 7) % 7 || 7;
+    return formatDate(addDays(now, daysToFri));
+  }
+  if (t.includes('end of month') || t === 'eom') {
+    return formatDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  }
+
+  // "March 5th", "Jan 15", "December 25 2026"
+  const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  const shortMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const monthDateMatch = t.match(/(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?/);
+  if (monthDateMatch) {
+    let monthIdx = months.indexOf(monthDateMatch[1]);
+    if (monthIdx === -1) monthIdx = shortMonths.indexOf(monthDateMatch[1]);
+    if (monthIdx !== -1) {
+      const year = monthDateMatch[3] ? parseInt(monthDateMatch[3]) : now.getFullYear();
+      const day = parseInt(monthDateMatch[2]);
+      return formatDate(new Date(year, monthIdx, day));
+    }
+  }
+
+  // "5th March", "15 Jan 2026"
+  const datemonthMatch = t.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(\w+)(?:\s+(\d{4}))?/);
+  if (datemonthMatch) {
+    let monthIdx = months.indexOf(datemonthMatch[2]);
+    if (monthIdx === -1) monthIdx = shortMonths.indexOf(datemonthMatch[2]);
+    if (monthIdx !== -1) {
+      const year = datemonthMatch[3] ? parseInt(datemonthMatch[3]) : now.getFullYear();
+      const day = parseInt(datemonthMatch[1]);
+      return formatDate(new Date(year, monthIdx, day));
+    }
+  }
+
+  return null;
+}
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+// ─── NLP Priority/Status Extraction ───────────────────────────────────────────
+
+function extractPriority(text: string): string | null {
+  const t = text.toLowerCase();
+  if (/\b(critical|asap|urgent|emergency|p0)\b/.test(t)) return 'critical';
+  if (/\b(high|important|p1)\b/.test(t)) return 'high';
+  if (/\b(medium|moderate|normal|p2)\b/.test(t)) return 'medium';
+  if (/\b(low|minor|nice.?to.?have|p3|p4)\b/.test(t)) return 'low';
+  return null;
+}
+
+function extractStatus(text: string): string | null {
+  const t = text.toLowerCase();
+  if (/\b(done|completed|finished|resolved|closed|shipped)\b/.test(t)) return 'done';
+  if (/\b(in.?progress|wip|working|started|ongoing|active)\b/.test(t)) return 'in-progress';
+  if (/\b(blocked|stuck|waiting|on.?hold|paused)\b/.test(t)) return 'blocked';
+  if (/\b(todo|to.?do|pending|planned|backlog|open|new)\b/.test(t)) return 'todo';
+  return null;
+}
+
+function extractPaymentType(text: string): string | null {
+  const t = text.toLowerCase();
+  if (/\b(income|revenue|earning|received|inflow|sale)\b/.test(t)) return 'income';
+  if (/\b(expense|cost|spend|paid|outflow|purchase|bought)\b/.test(t)) return 'expense';
+  if (/\b(subscription|sub|recurring|monthly|annual|yearly)\b/.test(t)) return 'subscription';
+  return null;
+}
+
+function extractCurrency(text: string): string {
+  if (/[$]|USD/i.test(text)) return 'USD';
+  if (/[€]|EUR/i.test(text)) return 'EUR';
+  if (/[£]|GBP/i.test(text)) return 'GBP';
+  if (/[¥]|JPY/i.test(text)) return 'JPY';
+  if (/[₹]|INR/i.test(text)) return 'INR';
+  return 'USD';
+}
+
+function extractAmount(text: string): number {
+  const m = text.match(/[$€£¥₹]?\s*([\d,]+(?:\.\d{1,2})?)/);
+  if (m) return parseFloat(m[1].replace(/,/g, ''));
+  return 0;
+}
+
+// ─── NLP Task Extraction (from natural language sentences) ────────────────────
+
+interface NLPTaskResult {
+  title: string;
+  dueDate?: string;
+  priority?: string;
+  status?: string;
+}
+
+function nlpExtractTask(line: string): NLPTaskResult {
+  let title = line.replace(/^[-*•▪▸►→]\s*/, '').replace(/^\d+[.)]\s*/, '').trim();
+  let dueDate: string | undefined;
+  let priority: string | undefined;
+  let status: string | undefined;
+
+  // Extract inline date references: "by tomorrow", "due next Monday", "before March 5th"
+  const datePatterns = [
+    /\b(?:by|due|before|until|deadline)\s+(.+?)(?:\s*[,;.|]|$)/i,
+    /\b(?:on|at)\s+((?:next\s+)?\w+day|tomorrow|today)/i,
+    /\(\s*(.*?(?:tomorrow|today|next\s+\w+|in\s+\d+\s+\w+|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d+).*?)\s*\)/i,
+  ];
+
+  for (const pat of datePatterns) {
+    const m = title.match(pat);
+    if (m) {
+      const parsed = parseNaturalDate(m[1].trim());
+      if (parsed) {
+        dueDate = parsed;
+        title = title.replace(m[0], '').trim();
+        break;
+      }
+    }
+  }
+
+  // Extract priority markers: [HIGH], !!!, (urgent), @high
+  const prioPatterns = [
+    /\[(critical|high|medium|low|urgent)\]/i,
+    /\((critical|high|medium|low|urgent)\)/i,
+    /@(critical|high|medium|low|urgent)\b/i,
+    /(!{3,})/,
+    /(!{2})/,
+  ];
+  for (const pat of prioPatterns) {
+    const m = title.match(pat);
+    if (m) {
+      if (m[1] === '!!' || m[1]?.startsWith('!!!')) {
+        priority = m[1].length >= 3 ? 'critical' : 'high';
+      } else {
+        priority = extractPriority(m[1] || m[0]);
+      }
+      title = title.replace(m[0], '').trim();
+      break;
+    }
+  }
+
+  // Extract status markers: [done], [in progress], (WIP), @done
+  const statusPatterns = [
+    /\[(done|completed|in.?progress|wip|blocked|todo)\]/i,
+    /\((done|completed|in.?progress|wip|blocked|todo)\)/i,
+    /@(done|completed|wip|blocked)\b/i,
+  ];
+  for (const pat of statusPatterns) {
+    const m = title.match(pat);
+    if (m) {
+      status = extractStatus(m[1] || m[0]);
+      title = title.replace(m[0], '').trim();
+      break;
+    }
+  }
+
+  // If no explicit priority found, check the remaining title text
+  if (!priority) priority = extractPriority(title) || undefined;
+  if (!status) status = extractStatus(title) || undefined;
+
+  // Clean up trailing commas, extra spaces
+  title = title.replace(/[,;]+$/, '').replace(/\s{2,}/g, ' ').trim();
+
+  return { title, dueDate, priority, status };
+}
+
+// ─── Levenshtein Distance for Fuzzy Matching ──────────────────────────────────
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+// ─── Markdown Table Parser ────────────────────────────────────────────────────
+
+function parseMarkdownTable(text: string): { rows: Record<string, string>[]; fields: string[] } | null {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  // Find header row (contains |)
+  const headerIdx = lines.findIndex(l => /^\|?.+\|.+\|?$/.test(l));
+  if (headerIdx === -1) return null;
+
+  // Check for separator row (|---|---|)
+  const sepIdx = headerIdx + 1;
+  if (sepIdx >= lines.length || !/^\|?[\s\-:]+\|[\s\-:|]+\|?$/.test(lines[sepIdx])) return null;
+
+  const parseRow = (line: string): string[] => {
+    return line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+  };
+
+  const headers = parseRow(lines[headerIdx]);
+  const rows: Record<string, string>[] = [];
+
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    if (!/\|/.test(lines[i])) break;
+    const cells = parseRow(lines[i]);
+    const row: Record<string, string> = {};
+    headers.forEach((h, j) => { if (cells[j]) row[h] = cells[j]; });
+    if (Object.keys(row).length > 0) rows.push(row);
+  }
+
+  return rows.length > 0 ? { rows, fields: headers } : null;
+}
+
+// ─── HTML Table Parser ────────────────────────────────────────────────────────
+
+function parseHtmlTable(text: string): { rows: Record<string, string>[]; fields: string[] } | null {
+  const tableMatch = text.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+  if (!tableMatch) return null;
+
+  const html = tableMatch[1];
+  const extractCells = (row: string, tag: string): string[] => {
+    const regex = new RegExp(`<${tag}[^>]*>(.*?)<\/${tag}>`, 'gi');
+    const cells: string[] = [];
+    let m;
+    while ((m = regex.exec(row)) !== null) {
+      cells.push(m[1].replace(/<[^>]+>/g, '').trim());
+    }
+    return cells;
+  };
+
+  const rowMatches = html.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+  if (!rowMatches || rowMatches.length < 2) return null;
+
+  // First row with <th> or first <tr> = headers
+  let headers = extractCells(rowMatches[0], 'th');
+  let dataStart = 1;
+  if (headers.length === 0) {
+    headers = extractCells(rowMatches[0], 'td');
+    dataStart = 1;
+  }
+  if (headers.length === 0) return null;
+
+  const rows: Record<string, string>[] = [];
+  for (let i = dataStart; i < rowMatches.length; i++) {
+    const cells = extractCells(rowMatches[i], 'td');
+    const row: Record<string, string> = {};
+    headers.forEach((h, j) => { if (cells[j]) row[h] = cells[j]; });
+    if (Object.keys(row).length > 0) rows.push(row);
+  }
+
+  return rows.length > 0 ? { rows, fields: headers } : null;
+}
+
 // ─── Parsing ──────────────────────────────────────────────────────────────────
 
 export interface ParsedData {
   rows: Record<string, string>[];
   sourceFields: string[];
-  detectedFormat: 'csv' | 'tsv' | 'json' | 'jsonlines' | 'text';
+  detectedFormat: 'csv' | 'tsv' | 'json' | 'jsonlines' | 'text' | 'markdown' | 'html';
 }
 
 /**
- * Detect if a parsed TSV/CSV is actually a TRANSPOSED table where:
- * - Column 0 = field/attribute names (Site Name, URL, WP Admin URL, etc.)
- * - Columns 1..N = individual records (one per column)
- * Returns transposed rows if detected, or null.
+ * Detect if a parsed TSV/CSV is actually a TRANSPOSED table.
  */
 function detectAndTranspose(rows: Record<string, string>[], sourceFields: string[]): Record<string, string>[] | null {
   if (rows.length < 2 || sourceFields.length < 2) return null;
-
-  // The first header is the "label column" header (e.g. "Site Name")
-  // The remaining headers are potential record names/values
   const labelHeader = sourceFields[0];
   const dataHeaders = sourceFields.slice(1);
-
-  // Collect all first-column values across rows — these should be field names
   const firstColValues = rows.map(r => r[labelHeader]?.trim()).filter(Boolean);
   if (firstColValues.length < 2) return null;
 
-  // Check if first-column values look like known field names/aliases
   const allAliases = new Set<string>();
   for (const target of Object.keys(TARGET_META) as ImportTarget[]) {
     const meta = TARGET_META[target];
     for (const field of [...meta.requiredFields, ...meta.optionalFields]) {
       allAliases.add(normalize(field));
-      for (const alias of (meta.aliases[field] || [])) {
-        allAliases.add(normalize(alias));
-      }
+      for (const alias of (meta.aliases[field] || [])) allAliases.add(normalize(alias));
     }
   }
 
   const matchCount = firstColValues.filter(v => allAliases.has(normalize(v))).length;
-  // If >40% of first-column values match known field names, it's transposed
   if (matchCount < firstColValues.length * 0.3) return null;
 
-  // Transpose: each data column becomes a record
   const transposed: Record<string, string>[] = [];
   for (const colHeader of dataHeaders) {
     const record: Record<string, string> = {};
     for (const row of rows) {
       const fieldName = row[labelHeader]?.trim();
       const value = row[colHeader]?.trim();
-      if (fieldName && value) {
-        record[fieldName] = value;
-      }
+      if (fieldName && value) record[fieldName] = value;
     }
-    if (Object.keys(record).length > 0) {
-      transposed.push(record);
-    }
+    if (Object.keys(record).length > 0) transposed.push(record);
   }
-
   return transposed.length > 0 ? transposed : null;
 }
 
 export function parseImportData(text: string, fileName?: string): ParsedData {
   const trimmed = text.trim();
+
+  // 0. Try HTML table
+  const htmlResult = parseHtmlTable(trimmed);
+  if (htmlResult && htmlResult.rows.length > 0) {
+    return { rows: htmlResult.rows, sourceFields: htmlResult.fields, detectedFormat: 'html' };
+  }
+
+  // 0b. Try Markdown table
+  const mdResult = parseMarkdownTable(trimmed);
+  if (mdResult && mdResult.rows.length > 0) {
+    return { rows: mdResult.rows, sourceFields: mdResult.fields, detectedFormat: 'markdown' };
+  }
 
   // 1. Try JSON
   if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
@@ -329,29 +659,22 @@ export function parseImportData(text: string, fileName?: string): ParsedData {
       return obj;
     });
 
-    // ★ CHECK FOR TRANSPOSED TABLE ★
     const transposed = detectAndTranspose(rows, result.meta.fields);
     if (transposed) {
-      // First-column values become the new source fields
       const newSourceFields = [...new Set(transposed.flatMap(r => Object.keys(r)))];
       return { rows: transposed, sourceFields: newSourceFields, detectedFormat: isTSV ? 'tsv' : 'csv' };
     }
 
-    return {
-      rows,
-      sourceFields: result.meta.fields,
-      detectedFormat: isTSV ? 'tsv' : 'csv',
-    };
+    return { rows, sourceFields: result.meta.fields, detectedFormat: isTSV ? 'tsv' : 'csv' };
   }
 
-  // 4. Smart plain-text — pass ALL lines (including blanks) for block splitting
+  // 4. Smart plain-text
   const plainRows = smartParsePlainText(lines);
   if (plainRows.length > 0) {
     const sourceFields = [...new Set(plainRows.flatMap(r => Object.keys(r)))];
     return { rows: plainRows, sourceFields, detectedFormat: 'text' };
   }
 
-  // 4b. Try again with non-empty lines only (for URL lists, task lists)
   const nonEmpty = lines.filter(l => l.trim());
   const plainRows2 = smartParsePlainText(nonEmpty);
   if (plainRows2.length > 0) {
@@ -359,12 +682,11 @@ export function parseImportData(text: string, fileName?: string): ParsedData {
     return { rows: plainRows2, sourceFields, detectedFormat: 'text' };
   }
 
-  // 5. Last fallback — every line is an item
+  // 5. Last fallback
   const fallbackRows = nonEmpty.map(l => ({ item: l.trim() }));
   return { rows: fallbackRows, sourceFields: ['item'], detectedFormat: 'text' };
 }
 
-/** Detect the best delimiter from the first line */
 function detectDelimiter(line: string): string {
   const candidates = [',', ';', '\t', '|'];
   let best = ',';
@@ -376,22 +698,18 @@ function detectDelimiter(line: string): string {
   return best;
 }
 
-/** Parse plain text lines into structured rows by detecting patterns */
 function smartParsePlainText(lines: string[]): Record<string, string>[] {
   const kvRegex = /^([^:=]+?)[:=]\s*(.+)$/;
-  // A line is KV only if the key part is NOT a URL scheme
   const isKvLine = (l: string): boolean => {
-    if (/^https?:/i.test(l.trim())) return false; // URL line, not KV
+    if (/^https?:/i.test(l.trim())) return false;
     return kvRegex.test(l);
   };
 
-  // ── Strategy 1: Multi-block key:value data (websites/credentials) ──
-  // Split by blank lines into blocks, each block = one record
+  // ── Strategy 1: Multi-block key:value data ──
   const rawText = lines.join('\n');
   const blocks = rawText.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
 
   if (blocks.length >= 1) {
-    // Check if blocks are key:value structured
     const kvBlocks: Record<string, string>[] = [];
     let totalKvLines = 0;
     let totalLines = 0;
@@ -404,14 +722,12 @@ function smartParsePlainText(lines: string[]): Record<string, string>[] {
 
       if (kvMatches.length >= 1) {
         const obj: Record<string, string> = {};
-        // Also capture a "header" line (first line without : or =) as a potential name
         let headerUsed = false;
         for (const l of blockLines) {
           if (isKvLine(l)) {
             const m = l.match(kvRegex);
             if (m) obj[m[1].trim()] = m[2].trim();
           } else if (!headerUsed && l.trim() && !l.startsWith('#') && !l.startsWith('---') && !/^https?:/i.test(l.trim())) {
-            // Treat first non-kv line as a title/name
             obj['__header__'] = l.replace(/^[-*•▪▸►→#]+\s*/, '').trim();
             headerUsed = true;
           }
@@ -420,14 +736,11 @@ function smartParsePlainText(lines: string[]): Record<string, string>[] {
       }
     }
 
-    // If >40% of all lines are key:value, treat as structured blocks
     if (totalKvLines > 0 && totalKvLines >= totalLines * 0.35 && kvBlocks.length > 0) {
-      // Normalize keys to match known field aliases
       return kvBlocks.map(block => {
         const normalized: Record<string, string> = {};
         for (const [rawKey, val] of Object.entries(block)) {
           if (rawKey === '__header__') {
-            // Use header as name/site/title if no name field exists
             if (!Object.keys(block).some(k => ['name', 'site', 'website', 'title', 'domain'].some(a => normalize(k).includes(a)))) {
               normalized['name'] = val;
             }
@@ -440,7 +753,7 @@ function smartParsePlainText(lines: string[]): Record<string, string>[] {
     }
   }
 
-  // ── Strategy 2: Lines with URLs (website/link list) ──
+  // ── Strategy 2: Lines with URLs ──
   const urlLines: { line: string; urls: string[] }[] = [];
   for (const l of lines) {
     const urls = l.match(URL_REGEX);
@@ -458,22 +771,47 @@ function smartParsePlainText(lines: string[]): Record<string, string>[] {
     });
   }
 
-  // ── Strategy 3: Plain list items (tasks/notes) ──
-  return lines.filter(l => l.trim()).map(l => {
+  // ── Strategy 3: Mixed content — detect per-line category ──
+  // Check if lines are a mix of different types (URLs, tasks with dates, amounts, etc.)
+  const categorizedLines: Record<string, string>[] = [];
+  for (const l of lines) {
+    if (!l.trim()) continue;
     const clean = l.replace(/^[-*•▪▸►→]\s*/, '').replace(/^\d+[.)]\s*/, '').trim();
-    return { title: clean };
-  });
+
+    // Check for payment-like lines: "$500 from Client" or "Pay $200 to Vendor"
+    const amountMatch = clean.match(CURRENCY_REGEX);
+    if (amountMatch) {
+      CURRENCY_REGEX.lastIndex = 0;
+      const amount = extractAmount(clean);
+      if (amount > 0) {
+        const title = clean.replace(CURRENCY_REGEX, '').replace(/^\s*[-–—:,]+\s*/, '').trim() || 'Payment';
+        CURRENCY_REGEX.lastIndex = 0;
+        categorizedLines.push({ title, amount: String(amount), currency: extractCurrency(clean), __type: 'payments' });
+        continue;
+      }
+    }
+    CURRENCY_REGEX.lastIndex = 0;
+
+    // Default: treat as a task with NLP extraction
+    const nlp = nlpExtractTask(clean);
+    const row: Record<string, string> = { title: nlp.title };
+    if (nlp.dueDate) row.dueDate = nlp.dueDate;
+    if (nlp.priority) row.priority = nlp.priority;
+    if (nlp.status) row.status = nlp.status;
+    categorizedLines.push(row);
+  }
+
+  return categorizedLines;
 }
 
 // ─── Content-Aware Auto-detection ─────────────────────────────────────────────
 
-/** Score a category using both header matching AND content value analysis */
 function scoreCategory(sourceFields: string[], rows: Record<string, string>[], target: ImportTarget): number {
   const meta = TARGET_META[target];
   const allFields = [...meta.requiredFields, ...meta.optionalFields];
   let score = 0;
 
-  // --- Header scoring ---
+  // --- Header scoring (with fuzzy matching) ---
   const matchedRequired = new Set<string>();
   for (const tf of allFields) {
     const normalTf = normalize(tf);
@@ -498,10 +836,16 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
         if (meta.requiredFields.includes(tf)) matchedRequired.add(tf);
         break;
       }
+      // Fuzzy match: if field names are close (Levenshtein ≤ 2)
+      if (normalSf.length > 3 && normalTf.length > 3 && levenshtein(normalSf, normalTf) <= 2) {
+        const pts = meta.requiredFields.includes(tf) ? 5 : 1;
+        score += pts;
+        if (meta.requiredFields.includes(tf)) matchedRequired.add(tf);
+        break;
+      }
     }
   }
 
-  // Penalize missing required fields (but less harshly — we can auto-fill some)
   for (const rf of meta.requiredFields) {
     if (!matchedRequired.has(rf)) score -= 3;
   }
@@ -512,9 +856,7 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
 
   for (const signal of meta.contentSignals) {
     const matches = allValues.match(new RegExp(signal.source, signal.flags.includes('g') ? signal.flags : signal.flags + 'g'));
-    if (matches) {
-      score += Math.min(matches.length * 2, 10);
-    }
+    if (matches) score += Math.min(matches.length * 2, 10);
   }
 
   // --- Special boosts ---
@@ -522,15 +864,12 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
     const urlCount = sampleRows.filter(r => Object.values(r).some(v => URL_REGEX.test(v))).length;
     URL_REGEX.lastIndex = 0;
     if (urlCount > sampleRows.length * 0.5) score += 15;
-    // If fields include "name" + "url" pattern, strong website signal
     const hasNameAndUrl = sourceFields.some(f => normalize(f) === 'name' || normalize(f) === 'site' || normalize(f) === 'website' || normalize(f) === 'domain') &&
                           sourceFields.some(f => normalize(f) === 'url' || normalize(f) === 'link' || normalize(f) === 'href' || normalize(f) === 'address');
     if (hasNameAndUrl) score += 10;
-    // Boost for website-specific key:value fields (WP Admin, Hosting, etc.)
     const websiteKeywords = ['wpadmin', 'wordpress', 'hosting', 'hostingprovider', 'wpusername', 'wppassword', 'siteurl', 'adminurl', 'hostinglogin', 'cpanel', 'nameserver', 'dns', 'ssl'];
     const keywordHits = sourceFields.filter(f => websiteKeywords.some(kw => normalize(f).includes(kw))).length;
     if (keywordHits > 0) score += keywordHits * 8;
-    // If ANY row has multiple URLs, likely a website record
     const multiUrlRows = sampleRows.filter(r => {
       const allVals = Object.values(r).join(' ');
       const matches = allVals.match(URL_REGEX);
@@ -540,16 +879,30 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
     if (multiUrlRows > 0) score += 12;
   }
 
-  // Boost links less than websites when URLs are present  
   if (target === 'links') {
     const hasWebsiteSignals = sourceFields.some(f => ['site', 'website', 'domain', 'hosting', 'wp', 'wpadmin', 'wordpress', 'hostingprovider', 'wpusername', 'wppassword', 'adminurl'].some(kw => normalize(f).includes(kw)));
     if (hasWebsiteSignals) score -= 15;
   }
 
-  // Penalize credentials less when password/username present alongside URL
   if (target === 'credentials') {
     const hasWebsiteSignals = sourceFields.some(f => ['hosting', 'wpadmin', 'wordpress', 'hostingprovider', 'siteurl'].some(kw => normalize(f).includes(kw)));
     if (hasWebsiteSignals) score -= 10;
+  }
+
+  // Boost payments when currency/amount patterns found
+  if (target === 'payments') {
+    const hasCurrency = CURRENCY_REGEX.test(allValues);
+    CURRENCY_REGEX.lastIndex = 0;
+    if (hasCurrency) score += 15;
+    // Check for __type marker from NLP plain-text parsing
+    const paymentMarkers = sampleRows.filter(r => r.__type === 'payments').length;
+    if (paymentMarkers > 0) score += paymentMarkers * 5;
+  }
+
+  // Boost tasks when NLP markers found
+  if (target === 'tasks') {
+    const taskMarkers = sampleRows.filter(r => r.dueDate || r.priority || r.status).length;
+    if (taskMarkers > 0) score += taskMarkers * 3;
   }
 
   return score;
@@ -563,7 +916,6 @@ export interface DetectionResult {
   validCount: number;
 }
 
-/** Detect category with confidence level */
 export function autoDetectWithConfidence(sourceFields: string[], rows: Record<string, string>[]): DetectionResult[] {
   const results = (Object.keys(TARGET_META) as ImportTarget[]).map(t => {
     const score = scoreCategory(sourceFields, rows, t);
@@ -573,7 +925,6 @@ export function autoDetectWithConfidence(sourceFields: string[], rows: Record<st
   });
 
   results.sort((a, b) => b.score - a.score);
-
   const top = results[0];
   const second = results[1];
   const gap = top.score - (second?.score ?? 0);
@@ -623,13 +974,24 @@ export function autoMapFields(sourceFields: string[], target: ImportTarget): Rec
     if (match) { map[tf] = match; usedSource.add(match); }
   }
 
-  // Pass 4: single-field fallback
+  // Pass 4: fuzzy match (Levenshtein ≤ 2)
+  for (const tf of allTargetFields) {
+    if (map[tf]) continue;
+    const normalTf = normalize(tf);
+    if (normalTf.length < 4) continue;
+    const match = sourceFields.find(sf => {
+      if (usedSource.has(sf)) return false;
+      const n = normalize(sf);
+      return n.length > 3 && levenshtein(n, normalTf) <= 2;
+    });
+    if (match) { map[tf] = match; usedSource.add(match); }
+  }
+
+  // Pass 5: single-field fallback
   if (Object.keys(map).length === 0 && sourceFields.length === 1) {
     const singleField = sourceFields[0];
     const firstRequired = meta.requiredFields[0];
-    if (firstRequired) {
-      map[firstRequired] = singleField;
-    }
+    if (firstRequired) map[firstRequired] = singleField;
   }
 
   return map;
@@ -644,7 +1006,6 @@ export function normalizeItems(
 ): Record<string, any>[] {
   const now = new Date().toISOString().split('T')[0];
   const meta = TARGET_META[target];
-  // Build a lookup: for each target field, collect ALL normalized alias strings (including the field name itself)
   const fieldAliasMap = new Map<string, Set<string>>();
   const allTargetFields = [...meta.requiredFields, ...meta.optionalFields];
   for (const tf of allTargetFields) {
@@ -654,7 +1015,6 @@ export function normalizeItems(
     fieldAliasMap.set(tf, aliases);
   }
 
-  // Pre-normalize all row keys once per call for perf
   const normalizedRowKeys = new Map<string, string>();
   for (const row of rows) {
     for (const k of Object.keys(row)) {
@@ -663,12 +1023,9 @@ export function normalizeItems(
   }
 
   const get = (row: Record<string, string>, field: string): string => {
-    // 1. Try mapped field first
     const mapped = fieldMap[field];
     if (mapped && row[mapped]?.trim()) return row[mapped].trim();
-    // 2. Try direct field name
     if (row[field]?.trim()) return row[field].trim();
-    // 3. Exact normalized match against aliases (NO partial matching — prevents ambiguity)
     const aliases = fieldAliasMap.get(field);
     if (aliases) {
       for (const k of Object.keys(row)) {
@@ -681,7 +1038,6 @@ export function normalizeItems(
   const toArray = (val: string) => val ? val.split(/[,;|]/).map(s => s.trim()).filter(Boolean) : [];
   const toBool = (val: string) => val ? ['true', '1', 'yes', 'on'].includes(val.toLowerCase()) : false;
 
-  /** Extract any URL from a row's values */
   const extractUrl = (row: Record<string, string>): string => {
     for (const v of Object.values(row)) {
       if (!v) continue;
@@ -692,7 +1048,6 @@ export function normalizeItems(
     return '';
   };
 
-  /** Derive a name from a URL */
   const nameFromUrl = (url: string): string => {
     if (!url) return '';
     return prettifyHostname(extractHostname(url));
@@ -703,10 +1058,8 @@ export function normalizeItems(
       case 'websites': {
         let url = get(row, 'url') || extractUrl(row);
         let name = get(row, 'name') || nameFromUrl(url) || 'Unnamed';
-        // If name looks like a URL and we have no url field, swap
         if (!url && URL_REGEX.test(name)) { url = name; name = nameFromUrl(url); }
         URL_REGEX.lastIndex = 0;
-        // If url doesn't start with http, try to fix it
         if (url && !url.startsWith('http')) url = 'https://' + url;
         return {
           name, url,
@@ -731,17 +1084,24 @@ export function normalizeItems(
           pinned: toBool(get(row, 'pinned')), tags: toArray(get(row, 'tags')),
         };
       }
-      case 'tasks':
+      case 'tasks': {
+        // Use NLP extraction for richer parsing
+        const rawTitle = get(row, 'title') || Object.values(row).find(v => v?.trim()) || 'Untitled';
+        const nlp = nlpExtractTask(rawTitle);
+        const rawDueDate = get(row, 'dueDate');
+        const parsedDueDate = rawDueDate ? (parseNaturalDate(rawDueDate) || rawDueDate) : nlp.dueDate;
+
         return {
-          title: get(row, 'title') || Object.values(row).find(v => v?.trim()) || 'Untitled',
-          priority: get(row, 'priority') || 'medium',
-          status: get(row, 'status') || 'todo',
-          dueDate: get(row, 'dueDate') || now,
+          title: nlp.title || rawTitle,
+          priority: get(row, 'priority') || nlp.priority || 'medium',
+          status: get(row, 'status') || nlp.status || 'todo',
+          dueDate: parsedDueDate || now,
           category: get(row, 'category') || 'General',
           description: get(row, 'description'),
           linkedProject: get(row, 'linkedProject'),
           subtasks: [], tags: toArray(get(row, 'tags')), createdAt: now,
         };
+      }
       case 'repos':
         return {
           name: get(row, 'name') || 'unnamed-repo', url: get(row, 'url') || extractUrl(row),
@@ -772,13 +1132,17 @@ export function normalizeItems(
         };
       case 'payments': {
         const amountStr = get(row, 'amount');
-        const amount = parseFloat(amountStr.replace(/[^0-9.\-]/g, '')) || 0;
+        const allVals = Object.values(row).join(' ');
+        const amount = amountStr ? (parseFloat(amountStr.replace(/[^0-9.\-]/g, '')) || 0) : extractAmount(allVals);
+        const rawDueDate = get(row, 'dueDate');
         return {
           title: get(row, 'title') || 'Untitled', amount,
-          currency: get(row, 'currency') || 'USD', type: get(row, 'type') || 'expense',
+          currency: get(row, 'currency') || extractCurrency(allVals),
+          type: get(row, 'type') || extractPaymentType(allVals) || 'expense',
           status: get(row, 'status') || 'pending', category: get(row, 'category') || 'Other',
           from: get(row, 'from'), to: get(row, 'to'),
-          dueDate: get(row, 'dueDate') || now, paidDate: '', linkedProject: '',
+          dueDate: rawDueDate ? (parseNaturalDate(rawDueDate) || rawDueDate) : now,
+          paidDate: '', linkedProject: '',
           recurring: toBool(get(row, 'recurring')), recurringInterval: '',
           notes: get(row, 'notes'), createdAt: now,
         };
@@ -808,67 +1172,216 @@ export function normalizeItems(
         return {};
     }
   }).filter(item => {
-    // v12: Relaxed validation — at least ONE required field must be non-empty
-    // This prevents legitimate items from being dropped when one field is auto-derived
     const meta = TARGET_META[target];
     const filledRequired = meta.requiredFields.filter(f => {
       const val = item[f];
       return val !== undefined && val !== null && val !== '' && val !== 'Unnamed' && val !== 'Untitled' && val !== 'unnamed-repo';
     });
-    // If at least one real required field OR the item has meaningful content (URL, description, etc.)
     if (filledRequired.length > 0) return true;
-    // Fallback: check if the item has ANY URL or meaningful text content
     const allVals = Object.values(item).filter(v => typeof v === 'string' && v.trim()).join(' ');
     return URL_REGEX.test(allVals) || allVals.length > 10;
   });
 }
 
-/** Generate a CSV template for a given target */
 export function generateTemplate(target: ImportTarget): string {
   const meta = TARGET_META[target];
   const headers = [...meta.requiredFields, ...meta.optionalFields];
   return headers.join(',') + '\n' + headers.map(() => '').join(',');
 }
 
-// ─── Autonomous Import ───────────────────────────────────────────────────────
+// ─── Multi-Category Split ─────────────────────────────────────────────────────
 
-export interface AutonomousImportResult {
-  categories: {
-    target: ImportTarget;
-    meta: TargetMeta;
-    confidence: 'high' | 'medium' | 'low';
-    items: Record<string, any>[];
-    fieldMap: Record<string, string>;
-    score: number;
-  }[];
-  parsedData: ParsedData;
-  totalItems: number;
+interface SplitCategory {
+  target: ImportTarget;
+  meta: TargetMeta;
+  confidence: 'high' | 'medium' | 'low';
+  items: Record<string, any>[];
+  fieldMap: Record<string, string>;
+  score: number;
 }
 
 /**
- * Fully autonomous import: parse → detect → map → normalize in one call.
+ * Attempt to split rows into multiple categories when the data contains
+ * mixed types (e.g., some rows have URLs → websites, some have amounts → payments).
+ * Returns null if data is homogeneous (single category is better).
+ */
+function tryMultiCategorySplit(rows: Record<string, string>[], sourceFields: string[]): SplitCategory[] | null {
+  // Only attempt multi-split for plain-text parsed data with __type markers
+  // or when rows have very different signatures
+  const typeMarked = rows.filter(r => r.__type);
+  if (typeMarked.length > 0) {
+    // Group by __type
+    const groups = new Map<string, Record<string, string>[]>();
+    const unmarked: Record<string, string>[] = [];
+    for (const row of rows) {
+      if (row.__type) {
+        const t = row.__type;
+        if (!groups.has(t)) groups.set(t, []);
+        groups.get(t)!.push(row);
+      } else {
+        unmarked.push(row);
+      }
+    }
+
+    // If we have meaningful groups, build categories
+    if (groups.size > 0 || unmarked.length > 0) {
+      const categories: SplitCategory[] = [];
+
+      for (const [type, groupRows] of groups) {
+        const target = type as ImportTarget;
+        if (!TARGET_META[target]) continue;
+        const fieldMap = autoMapFields(Object.keys(groupRows[0]), target);
+        const items = normalizeItems(groupRows, target, fieldMap);
+        if (items.length > 0) {
+          categories.push({
+            target,
+            meta: TARGET_META[target],
+            confidence: 'high',
+            items,
+            fieldMap,
+            score: 100,
+          });
+        }
+      }
+
+      // Process unmarked rows through normal detection
+      if (unmarked.length > 0) {
+        const sf = [...new Set(unmarked.flatMap(r => Object.keys(r)))];
+        const detections = autoDetectWithConfidence(sf, unmarked);
+        const best = detections[0];
+        if (best && best.validCount > 0) {
+          const items = normalizeItems(unmarked, best.target, best.fieldMap);
+          if (items.length > 0) {
+            // Merge if same target exists
+            const existing = categories.find(c => c.target === best.target);
+            if (existing) {
+              existing.items.push(...items);
+            } else {
+              categories.push({
+                target: best.target,
+                meta: TARGET_META[best.target],
+                confidence: best.confidence,
+                items,
+                fieldMap: best.fieldMap,
+                score: best.score,
+              });
+            }
+          }
+        }
+      }
+
+      if (categories.length > 1 || (categories.length === 1 && groups.size > 0)) {
+        return categories;
+      }
+    }
+  }
+
+  // Signature-based split: check if different rows match different categories strongly
+  if (rows.length >= 3) {
+    const rowSignatures = rows.map(row => {
+      const values = Object.values(row).join(' ');
+      const hasUrl = URL_REGEX.test(values);
+      URL_REGEX.lastIndex = 0;
+      const hasCurrency = CURRENCY_REGEX.test(values);
+      CURRENCY_REGEX.lastIndex = 0;
+      const hasEmail = EMAIL_REGEX.test(values);
+      EMAIL_REGEX.lastIndex = 0;
+
+      if (hasCurrency) return 'payments';
+      if (hasUrl && (row.username || row.password || row.wpAdminUrl)) return 'websites';
+      if (hasUrl) return 'links';
+      if (hasEmail && (row.password || row.apiKey)) return 'credentials';
+      return 'tasks';
+    });
+
+    const uniqueTypes = new Set(rowSignatures);
+    if (uniqueTypes.size >= 2) {
+      const groups = new Map<string, Record<string, string>[]>();
+      rows.forEach((row, i) => {
+        const type = rowSignatures[i];
+        if (!groups.has(type)) groups.set(type, []);
+        groups.get(type)!.push(row);
+      });
+
+      const categories: SplitCategory[] = [];
+      for (const [type, groupRows] of groups) {
+        const target = type as ImportTarget;
+        if (!TARGET_META[target]) continue;
+        const sf = [...new Set(groupRows.flatMap(r => Object.keys(r)))];
+        const fieldMap = autoMapFields(sf, target);
+        const items = normalizeItems(groupRows, target, fieldMap);
+        if (items.length > 0) {
+          categories.push({
+            target,
+            meta: TARGET_META[target],
+            confidence: items.length >= 2 ? 'medium' : 'low',
+            items,
+            fieldMap,
+            score: items.length * 10,
+          });
+        }
+      }
+
+      if (categories.length >= 2) return categories;
+    }
+  }
+
+  return null;
+}
+
+// ─── Autonomous Import ───────────────────────────────────────────────────────
+
+export interface AutonomousImportResult {
+  categories: SplitCategory[];
+  parsedData: ParsedData;
+  totalItems: number;
+  expressReady: boolean; // true when confidence is high enough to skip review
+}
+
+/**
+ * Fully autonomous import: parse → detect → map → normalize → split.
+ * v15: Now supports multi-category output and express mode.
  */
 export function autonomousImport(text: string, fileName?: string): AutonomousImportResult {
   const parsedData = parseImportData(text, fileName);
 
   if (parsedData.rows.length === 0) {
-    return { categories: [], parsedData, totalItems: 0 };
+    return { categories: [], parsedData, totalItems: 0, expressReady: false };
   }
 
+  // Try multi-category split first
+  const multiSplit = tryMultiCategorySplit(parsedData.rows, parsedData.sourceFields);
+  if (multiSplit && multiSplit.length > 0) {
+    const totalItems = multiSplit.reduce((sum, c) => sum + c.items.length, 0);
+    const allHigh = multiSplit.every(c => c.confidence === 'high');
+    return {
+      categories: multiSplit.sort((a, b) => b.items.length - a.items.length),
+      parsedData,
+      totalItems,
+      expressReady: allHigh && totalItems > 0,
+    };
+  }
+
+  // Single-category detection
   const detections = autoDetectWithConfidence(parsedData.sourceFields, parsedData.rows);
-  
-  // Try the top 3 detections and pick the one that produces the most valid items
-  let bestResult: { target: ImportTarget; items: Record<string, any>[]; confidence: 'high' | 'medium' | 'low'; fieldMap: Record<string, string>; score: number } | null = null;
+
+  let bestResult: SplitCategory | null = null;
 
   for (const det of detections.slice(0, 3)) {
     const items = normalizeItems(parsedData.rows, det.target, det.fieldMap);
     if (items.length > 0 && (!bestResult || items.length > bestResult.items.length || (items.length === bestResult.items.length && det.score > bestResult.score))) {
-      bestResult = { target: det.target, items, confidence: det.confidence, fieldMap: det.fieldMap, score: det.score };
+      bestResult = {
+        target: det.target,
+        meta: TARGET_META[det.target],
+        items,
+        confidence: det.confidence,
+        fieldMap: det.fieldMap,
+        score: det.score,
+      };
     }
   }
 
   if (!bestResult || bestResult.items.length === 0) {
-    // Fallback: force websites if URLs detected, or tasks otherwise
     const allValues = parsedData.rows.flatMap(r => Object.values(r)).join(' ');
     const hasUrls = URL_REGEX.test(allValues);
     URL_REGEX.lastIndex = 0;
@@ -876,24 +1389,24 @@ export function autonomousImport(text: string, fileName?: string): AutonomousImp
     const fieldMap = autoMapFields(parsedData.sourceFields, fallbackTarget);
     const items = normalizeItems(parsedData.rows, fallbackTarget, fieldMap);
     if (items.length > 0) {
-      bestResult = { target: fallbackTarget, items, confidence: 'medium', fieldMap, score: 0 };
+      bestResult = {
+        target: fallbackTarget,
+        meta: TARGET_META[fallbackTarget],
+        items,
+        confidence: 'medium',
+        fieldMap,
+        score: 0,
+      };
     }
   }
 
-  const categories = bestResult
-    ? [{
-        target: bestResult.target,
-        meta: TARGET_META[bestResult.target],
-        confidence: bestResult.confidence,
-        items: bestResult.items,
-        fieldMap: bestResult.fieldMap,
-        score: bestResult.score,
-      }]
-    : [];
+  const categories = bestResult ? [bestResult] : [];
+  const totalItems = categories.reduce((sum, c) => sum + c.items.length, 0);
+  const expressReady = categories.length === 1 && categories[0].confidence === 'high' && totalItems > 0;
 
-  return {
-    categories,
-    parsedData,
-    totalItems: categories.reduce((sum, c) => sum + c.items.length, 0),
-  };
+  return { categories, parsedData, totalItems, expressReady };
 }
+
+// ─── Public NLP helpers (for testing/external use) ────────────────────────────
+
+export { parseNaturalDate, nlpExtractTask, extractPriority, extractStatus, extractPaymentType };
