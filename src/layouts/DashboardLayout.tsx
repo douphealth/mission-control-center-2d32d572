@@ -110,19 +110,21 @@ export default function DashboardLayout() {
         <TopBar />
         <main className="flex-1 overflow-y-auto pb-24 lg:pb-0 overscroll-contain">
           <div className="max-w-[1600px] mx-auto p-3 sm:p-5 lg:p-8">
-            <Suspense fallback={<LoadingSkeleton />}>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeSection}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <Section sectionId={activeSection} key={activeSection} {...({ sectionId: activeSection } as any)} />
-                </motion.div>
-              </AnimatePresence>
-            </Suspense>
+            <RouteErrorBoundary sectionName={activeSection} key={activeSection}>
+              <Suspense fallback={<LoadingSkeleton />}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeSection}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <Section sectionId={activeSection} key={activeSection} {...({ sectionId: activeSection } as any)} />
+                  </motion.div>
+                </AnimatePresence>
+              </Suspense>
+            </RouteErrorBoundary>
           </div>
         </main>
         {!isMobile && <StatusBar />}
