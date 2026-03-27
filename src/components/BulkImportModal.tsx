@@ -651,7 +651,7 @@ export default function BulkImportModal({ open, onClose }: { open: boolean; onCl
                                         'bg-blue-500/15 text-blue-500'
                                       }`}>{item.priority}</span>
                                     )}
-                                    {item.dueDate && item.dueDate !== formatDate(new Date()) && (
+                                    {item.dueDate && item.dueDate !== new Date().toISOString().split('T')[0] && (
                                       <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{item.dueDate}</span>
                                     )}
                                     {item.amount > 0 && (
