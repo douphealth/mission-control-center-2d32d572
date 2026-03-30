@@ -81,11 +81,12 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
 
   const addSub = () => {
     if (!newSub.trim()) return;
-    uf("subtasks", [...form.subtasks, { id: `s-${Date.now()}`, title: newSub.trim(), done: false }]);
+    uf("subtasks", [...form.subtasks, { id: `s-${Date.now()}`, title: newSub.trim(), done: false } as Subtask]);
     setNewSub("");
   };
-  const removeSub = (id: string) => uf("subtasks", form.subtasks.filter(s => s.id !== id));
-  const toggleSub = (id: string) => uf("subtasks", form.subtasks.map(s => s.id === id ? { ...s, done: !s.done } : s));
+  const removeSub = (id: string) => uf("subtasks", form.subtasks.filter((s: Subtask) => s.id !== id));
+  const toggleSub = (id: string) => uf("subtasks", form.subtasks.map((s: Subtask) => s.id === id ? { ...s, done: !s.done } : s));
+  const updateSub = (id: string, changes: Partial<Subtask>) => uf("subtasks", form.subtasks.map((s: Subtask) => s.id === id ? { ...s, ...changes } : s));
 
   const save = () => {
     if (!form.title.trim()) { toast.error("Title required"); return; }
