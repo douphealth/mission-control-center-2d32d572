@@ -86,20 +86,20 @@ export const TARGET_META: Record<ImportTarget, TargetMeta> = {
     requiredFields: ['name'],
     optionalFields: ['url', 'description', 'language', 'stars', 'forks', 'status', 'demoUrl', 'progress', 'topics', 'devPlatformUrl', 'deploymentUrl'],
     aliases: {
-      name: ['repo', 'repository', 'repo_name', 'project', 'full_name', 'repo name', 'repository name'],
-      url: ['link', 'href', 'github_url', 'repo_url', 'html_url', 'clone_url', 'ssh_url', 'github url'],
+      name: ['repo', 'repository', 'repo_name', 'project', 'full_name', 'repo name', 'repository name', 'project name'],
+      url: ['link', 'href', 'github_url', 'repo_url', 'html_url', 'clone_url', 'ssh_url', 'github url', 'github link', 'github_link', 'repo link', 'repo_link', 'repository url', 'repository link', 'git url', 'git link', 'source url', 'source link', 'code url', 'code link'],
       description: ['desc', 'about', 'summary'],
-      language: ['lang', 'tech', 'primary_language'],
+      language: ['lang', 'tech', 'primary_language', 'programming language'],
       stars: ['star', 'stargazers', 'stargazers_count'],
       forks: ['fork', 'forks_count'],
-      status: ['state', 'archived'],
-      demoUrl: ['demo', 'demo_url', 'homepage', 'live_url', 'demo url'],
+      status: ['state', 'archived', 'visibility'],
+      demoUrl: ['demo', 'demo_url', 'homepage', 'live_url', 'demo url', 'live url', 'preview url', 'preview'],
       progress: ['completion', 'percent'],
       topics: ['tags', 'labels', 'keywords', 'topic'],
-      devPlatformUrl: ['dev_platform', 'dev_platform_url', 'platform_url', 'platform', 'dev_url', 'builder_url', 'builder', 'ide_url', 'ide', 'aistudio', 'ai_studio', 'bolt_url', 'lovable_url', 'replit_url', 'coding_platform', 'development_url', 'dev platform', 'development platform', 'code platform', 'code url', 'dev platform url'],
-      deploymentUrl: ['deployment', 'deployment_url', 'deploy_url', 'gateway', 'gateway_url', 'hosting_url', 'published_url', 'published', 'live', 'live_url', 'production_url', 'production', 'cloudways', 'vercel', 'netlify', 'railway', 'render', 'fly', 'pages', 'cloudflare_pages', 'deployed', 'deploy gateway', 'deployment gateway', 'deployment gateway url'],
+      devPlatformUrl: ['dev_platform', 'dev_platform_url', 'platform_url', 'platform', 'dev_url', 'builder_url', 'builder', 'ide_url', 'ide', 'aistudio', 'ai_studio', 'bolt_url', 'lovable_url', 'replit_url', 'coding_platform', 'development_url', 'dev platform', 'development platform', 'code platform', 'dev platform url', 'lovable app', 'lovable_app', 'lovable project', 'lovable_project', 'lovable link', 'lovable url'],
+      deploymentUrl: ['deployment', 'deployment_url', 'deploy_url', 'gateway', 'gateway_url', 'hosting_url', 'published_url', 'published', 'live', 'live_url', 'production_url', 'production', 'cloudways', 'vercel', 'netlify', 'railway', 'render', 'fly', 'pages', 'cloudflare_pages', 'deployed', 'deploy gateway', 'deployment gateway', 'deployment gateway url', 'cloudflare page', 'cloudflare_page', 'cloudflare url', 'cloudflare_url', 'cf page', 'cf pages', 'pages url', 'pages_url', 'deployed url', 'deployed_url'],
     },
-    contentSignals: [/github\.com/i, /gitlab\.com/i, /bitbucket/i, /repository|repo/i, /stars?|forks?/i],
+    contentSignals: [/github\.com/i, /gitlab\.com/i, /bitbucket/i, /repository|repo/i, /stars?|forks?/i, /lovable\.dev\/projects/i, /\.pages\.dev/i],
   },
   buildProjects: {
     label: 'Build Projects', emoji: '🛠️',
@@ -859,14 +859,43 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
     if (matches) score += Math.min(matches.length * 2, 10);
   }
 
+  // --- Detect GitHub/repo signals in content ---
+  const githubUrlCount = sampleRows.filter(r => Object.values(r).some(v => /github\.com/i.test(v))).length;
+  const lovableUrlCount = sampleRows.filter(r => Object.values(r).some(v => /lovable\.dev\/projects/i.test(v))).length;
+  const pagesDevCount = sampleRows.filter(r => Object.values(r).some(v => /\.pages\.dev/i.test(v))).length;
+  const isGitHubData = githubUrlCount > sampleRows.length * 0.3;
+  const hasRepoFieldSignals = sourceFields.some(f => {
+    const n = normalize(f);
+    return ['repositoryname', 'reponame', 'githublink', 'githuburl', 'cloudflarepage', 'lovableapp', 'lovableproject', 'pagesurl'].some(kw => n.includes(kw));
+  });
+  const hasLanguageField = sourceFields.some(f => normalize(f) === 'language' || normalize(f) === 'lang' || normalize(f) === 'programminglanguage');
+
   // --- Special boosts ---
+  if (target === 'repos') {
+    // Massive boost when GitHub URLs dominate the data
+    if (isGitHubData) score += 50;
+    if (hasRepoFieldSignals) score += 30;
+    if (hasLanguageField) score += 15;
+    if (lovableUrlCount > 0) score += lovableUrlCount * 3;
+    if (pagesDevCount > 0) score += pagesDevCount * 3;
+    // Boost for "Repository" appearing in field names
+    const repoFieldCount = sourceFields.filter(f => /repo|repository/i.test(f)).length;
+    if (repoFieldCount > 0) score += repoFieldCount * 10;
+  }
+
   if (target === 'websites') {
+    // PENALIZE websites when data is clearly GitHub repos
+    if (isGitHubData) score -= 40;
+    if (hasRepoFieldSignals) score -= 30;
+    if (hasLanguageField) score -= 20;
+
     const urlCount = sampleRows.filter(r => Object.values(r).some(v => URL_REGEX.test(v))).length;
     URL_REGEX.lastIndex = 0;
-    if (urlCount > sampleRows.length * 0.5) score += 15;
+    // Only boost URLs if NOT GitHub data
+    if (!isGitHubData && urlCount > sampleRows.length * 0.5) score += 15;
     const hasNameAndUrl = sourceFields.some(f => normalize(f) === 'name' || normalize(f) === 'site' || normalize(f) === 'website' || normalize(f) === 'domain') &&
                           sourceFields.some(f => normalize(f) === 'url' || normalize(f) === 'link' || normalize(f) === 'href' || normalize(f) === 'address');
-    if (hasNameAndUrl) score += 10;
+    if (hasNameAndUrl && !isGitHubData) score += 10;
     const websiteKeywords = ['wpadmin', 'wordpress', 'hosting', 'hostingprovider', 'wpusername', 'wppassword', 'siteurl', 'adminurl', 'hostinglogin', 'cpanel', 'nameserver', 'dns', 'ssl'];
     const keywordHits = sourceFields.filter(f => websiteKeywords.some(kw => normalize(f).includes(kw))).length;
     if (keywordHits > 0) score += keywordHits * 8;
@@ -876,17 +905,26 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
       URL_REGEX.lastIndex = 0;
       return matches && matches.length >= 2;
     }).length;
-    if (multiUrlRows > 0) score += 12;
+    if (multiUrlRows > 0 && !isGitHubData) score += 12;
   }
 
   if (target === 'links') {
+    // Penalize links for GitHub/repo data
+    if (isGitHubData) score -= 30;
+    if (hasRepoFieldSignals) score -= 20;
     const hasWebsiteSignals = sourceFields.some(f => ['site', 'website', 'domain', 'hosting', 'wp', 'wpadmin', 'wordpress', 'hostingprovider', 'wpusername', 'wppassword', 'adminurl'].some(kw => normalize(f).includes(kw)));
     if (hasWebsiteSignals) score -= 15;
+  }
+
+  if (target === 'buildProjects') {
+    // Penalize buildProjects when it's clearly repos
+    if (isGitHubData && hasRepoFieldSignals) score -= 20;
   }
 
   if (target === 'credentials') {
     const hasWebsiteSignals = sourceFields.some(f => ['hosting', 'wpadmin', 'wordpress', 'hostingprovider', 'siteurl'].some(kw => normalize(f).includes(kw)));
     if (hasWebsiteSignals) score -= 10;
+    if (isGitHubData) score -= 20;
   }
 
   // Boost payments when currency/amount patterns found
@@ -894,15 +932,16 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
     const hasCurrency = CURRENCY_REGEX.test(allValues);
     CURRENCY_REGEX.lastIndex = 0;
     if (hasCurrency) score += 15;
-    // Check for __type marker from NLP plain-text parsing
     const paymentMarkers = sampleRows.filter(r => r.__type === 'payments').length;
     if (paymentMarkers > 0) score += paymentMarkers * 5;
+    if (isGitHubData) score -= 20;
   }
 
   // Boost tasks when NLP markers found
   if (target === 'tasks') {
     const taskMarkers = sampleRows.filter(r => r.dueDate || r.priority || r.status).length;
     if (taskMarkers > 0) score += taskMarkers * 3;
+    if (isGitHubData) score -= 20;
   }
 
   return score;
@@ -1385,7 +1424,8 @@ export function autonomousImport(text: string, fileName?: string): AutonomousImp
     const allValues = parsedData.rows.flatMap(r => Object.values(r)).join(' ');
     const hasUrls = URL_REGEX.test(allValues);
     URL_REGEX.lastIndex = 0;
-    const fallbackTarget: ImportTarget = hasUrls ? 'websites' : 'tasks';
+    const hasGitHub = /github\.com/i.test(allValues);
+    const fallbackTarget: ImportTarget = hasGitHub ? 'repos' : hasUrls ? 'websites' : 'tasks';
     const fieldMap = autoMapFields(parsedData.sourceFields, fallbackTarget);
     const items = normalizeItems(parsedData.rows, fallbackTarget, fieldMap);
     if (items.length > 0) {
