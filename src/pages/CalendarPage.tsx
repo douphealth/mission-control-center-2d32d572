@@ -443,23 +443,52 @@ export default function CalendarPage() {
     })),
     [gcal.events]);
 
-  const taskEvents: CalEvent[] = useMemo(() =>
-    tasks.filter(t => t.dueDate).map(t => ({
-      id: `task-${t.id}`,
-      title: t.title,
-      date: t.dueDate,
-      color: PRIORITY_COLOR[t.priority] || "#3b82f6",
-      category: t.category || "Deadline",
-      description: t.description,
-      isTask: true,
-      taskId: t.id,
-      priority: t.priority,
-      status: t.status,
-      startTime: t.startTime,
-      endTime: t.endTime,
-      allDay: t.allDay !== false,
-    })),
-    [tasks]);
+  const taskEvents: CalEvent[] = useMemo(() => {
+    // Compute a ±6 month range for recurring expansion
+    const now = new Date();
+    const rangeStart = fmtDate(new Date(now.getFullYear(), now.getMonth() - 6, 1));
+    const rangeEnd = fmtDate(new Date(now.getFullYear(), now.getMonth() + 6, 0));
+
+    const result: CalEvent[] = [];
+
+    tasks.filter(t => t.dueDate).forEach(t => {
+      const baseEvent = {
+        title: t.title,
+        color: PRIORITY_COLOR[t.priority] || "#3b82f6",
+        category: t.category || "Deadline",
+        description: t.description,
+        isTask: true,
+        taskId: t.id,
+        priority: t.priority,
+        status: t.status,
+        startTime: t.startTime,
+        endTime: t.endTime,
+        allDay: t.allDay !== false,
+      };
+
+      if (t.recurring && t.recurringInterval) {
+        // Expand recurring task into multiple calendar instances
+        const instances = expandRecurringTask(t, rangeStart, rangeEnd);
+        instances.forEach((inst) => {
+          result.push({
+            ...baseEvent,
+            id: `task-${t.id}-r${inst.occurrenceIndex}`,
+            date: inst.date,
+            title: `🔁 ${t.title}`,
+          });
+        });
+      } else {
+        // Single occurrence task
+        result.push({
+          ...baseEvent,
+          id: `task-${t.id}`,
+          date: t.dueDate,
+        });
+      }
+    });
+
+    return result;
+  }, [tasks]);
 
   const allEvents = useMemo(() => {
     const taskIds = new Set(taskEvents.map(te => te.id));

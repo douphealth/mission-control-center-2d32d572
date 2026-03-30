@@ -493,12 +493,22 @@ export async function pushTasksToGCal(tasks: {
   title: string;
   description?: string;
   dueDate: string;
+  startDate?: string;
   startTime?: string;
   endTime?: string;
   allDay?: boolean;
   gcalEventId?: string;
+  recurring?: boolean;
+  recurringInterval?: string;
+  recurringEndType?: string;
+  recurringEndDate?: string;
+  recurringEndCount?: number;
+  recurringCustomDays?: number;
 }[]): Promise<Map<string, string>> {
   if (!isGCalConnected()) return new Map();
+
+  // Lazy import to avoid circular deps
+  const { toRRule } = await import('@/lib/recurrence');
 
   const results = new Map<string, string>();
 
@@ -513,13 +523,23 @@ export async function pushTasksToGCal(tasks: {
         description: task.description || '',
       };
 
+      const eventDate = task.startDate || task.dueDate;
+
       if (isAllDay) {
-        eventBody.start = { date: task.dueDate };
-        eventBody.end = { date: task.dueDate };
+        eventBody.start = { date: eventDate };
+        eventBody.end = { date: eventDate };
       } else {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        eventBody.start = { dateTime: `${task.dueDate}T${task.startTime || '09:00'}:00`, timeZone: tz };
-        eventBody.end = { dateTime: `${task.dueDate}T${task.endTime || '10:00'}:00`, timeZone: tz };
+        eventBody.start = { dateTime: `${eventDate}T${task.startTime || '09:00'}:00`, timeZone: tz };
+        eventBody.end = { dateTime: `${eventDate}T${task.endTime || '10:00'}:00`, timeZone: tz };
+      }
+
+      // Add recurrence rule if task is recurring
+      if (task.recurring && task.recurringInterval) {
+        const rrule = toRRule(task as any);
+        if (rrule) {
+          eventBody.recurrence = [rrule];
+        }
       }
 
       // Use deterministic ID derived from task ID — prevents duplicates on re-push
