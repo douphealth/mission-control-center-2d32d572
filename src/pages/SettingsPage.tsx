@@ -92,13 +92,20 @@ export default function SettingsPage() {
   const saveName = () => updateData({ userName: name, userRole: role });
 
   const handleExport = async () => {
-    const data = await exportAllData();
-    const blob = new Blob([data], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `mission-control-backup-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    toast.success("Backup downloaded");
+    try {
+      const data = await exportAllData();
+      const parsed = JSON.parse(data);
+      const totalItems = parsed._meta?.totalItems || 'all';
+      const blob = new Blob([data], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `mission-control-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast.success(`Backup downloaded — ${totalItems} items across all tables`);
+    } catch (e) {
+      toast.error("Export failed. Please try again.");
+    }
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,17 +114,34 @@ export default function SettingsPage() {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       try {
-        await importAllData(ev.target?.result as string);
-        if (isSupabaseConnected()) {
-          await fullSync();
+        const json = ev.target?.result as string;
+        const parsed = JSON.parse(json);
+        // Validate it's a Mission Control backup
+        const hasKnownKeys = ['websites', 'tasks', 'repos', 'links', 'notes'].some(k => Array.isArray(parsed[k]));
+        if (!hasKnownKeys) {
+          toast.error("This doesn't look like a Mission Control backup file.");
+          return;
         }
-        toast.success("Backup imported and synced");
-        setTimeout(() => window.location.reload(), 800);
-      } catch {
-        toast.error("Invalid file or import failed.");
+        await importAllData(json);
+        if (isSupabaseConnected()) {
+          toast.info("Syncing imported data to cloud…");
+          const result = await fullSync();
+          if (result.success) {
+            toast.success(`Import complete — pushed ${result.pushed} items to cloud`);
+          } else {
+            toast.warning("Imported locally but cloud sync failed. Will retry automatically.");
+          }
+        } else {
+          toast.success("Backup imported successfully");
+        }
+        setTimeout(() => window.location.reload(), 1200);
+      } catch (err) {
+        toast.error("Invalid file or import failed. Make sure it's a valid JSON backup.");
       }
     };
     reader.readAsText(file);
+    // Reset input so same file can be re-imported
+    e.target.value = '';
   };
 
   const handleClearAll = async () => {
