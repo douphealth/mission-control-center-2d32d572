@@ -176,6 +176,26 @@ export default function GitHubPage() {
         <FormField label="Dev Platform URL"><FormInput value={form.devPlatformUrl || ""} onChange={v => uf("devPlatformUrl", v)} placeholder="https://bolt.new/..., lovable.dev/..., replit.com/..." /></FormField>
         <FormField label="Deployment Gateway URL"><FormInput value={form.deploymentUrl || ""} onChange={v => uf("deploymentUrl", v)} placeholder="https://vercel.com/..., cloudways.com/..., netlify.app/..." /></FormField>
         <FormField label="Topics"><FormTagsInput value={form.topics} onChange={v => uf("topics", v)} placeholder="Add topic and press Enter" /></FormField>
+        {/* Database Connection */}
+        <div className="border-t border-border/30 pt-4 mt-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Database size={14} className="text-primary" />
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Database Connection</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <FormField label="DB Type">
+              <FormSelect value={form.dbType || ""} onChange={v => uf("dbType", v || undefined)} options={DB_TYPES} />
+            </FormField>
+            <FormField label="DB Name"><FormInput value={form.dbName || ""} onChange={v => uf("dbName", v)} placeholder="my-project-db" /></FormField>
+          </div>
+          {form.dbType && (
+            <>
+              <FormField label="DB URL / Connection String"><FormInput value={form.dbUrl || ""} onChange={v => uf("dbUrl", v)} placeholder={form.dbType === 'supabase' ? 'https://xxxxx.supabase.co' : 'postgresql://...'} /></FormField>
+              <FormField label="DB Dashboard URL"><FormInput value={form.dbDashboardUrl || ""} onChange={v => uf("dbDashboardUrl", v)} placeholder={form.dbType === 'supabase' ? 'https://supabase.com/dashboard/project/xxxxx' : 'https://...'} /></FormField>
+              <FormField label="DB Notes"><FormTextarea value={form.dbNotes || ""} onChange={v => uf("dbNotes", v)} placeholder="API keys, special config notes..." rows={2} /></FormField>
+            </>
+          )}
+        </div>
       </FormModal>
 
       <ConfirmDialog {...cd.dialogProps} />

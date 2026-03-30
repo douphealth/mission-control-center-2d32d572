@@ -84,6 +84,12 @@ export interface GitHubRepo {
     devPlatformUrl?: string;
     /** URL of the deployment gateway (Cloudways, Vercel, Netlify, Railway, etc.) */
     deploymentUrl?: string;
+    /** Database connection info */
+    dbType?: 'supabase' | 'firebase' | 'planetscale' | 'neon' | 'railway' | 'mongodb' | 'postgres' | 'mysql' | 'other';
+    dbUrl?: string;          // Database URL / connection string
+    dbDashboardUrl?: string; // Dashboard link (e.g., Supabase dashboard URL)
+    dbName?: string;         // Database name or project name
+    dbNotes?: string;        // Additional DB notes
 }
 
 export interface BuildProject {
