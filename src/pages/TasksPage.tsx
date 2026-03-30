@@ -326,18 +326,33 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
               {/* Subtasks */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2">
-                  Subtasks {form.subtasks.length > 0 && <span className="text-primary">({form.subtasks.filter(s => s.done).length}/{form.subtasks.length})</span>}
+                  Subtasks {form.subtasks.length > 0 && <span className="text-primary">({form.subtasks.filter((s: Subtask) => s.done).length}/{form.subtasks.length})</span>}
                 </label>
                 <div className="space-y-1.5 mb-2">
-                  {form.subtasks.map(sub => (
-                    <div key={sub.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/50 group">
+                  {form.subtasks.map((sub: Subtask) => (
+                    <div key={sub.id} className="flex items-start gap-2 px-3 py-2 rounded-xl bg-secondary/50 group">
                       <button type="button" onClick={() => toggleSub(sub.id)}
-                        className={`shrink-0 transition-colors ${sub.done ? "text-emerald-500" : "text-muted-foreground hover:text-primary"}`}>
+                        className={`shrink-0 mt-0.5 transition-colors ${sub.done ? "text-emerald-500" : "text-muted-foreground hover:text-primary"}`}>
                         {sub.done ? <CheckCircle2 size={14} /> : <Circle size={14} />}
                       </button>
-                      <span className={`flex-1 text-sm ${sub.done ? "line-through text-muted-foreground" : "text-foreground"}`}>{sub.title}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-sm block ${sub.done ? "line-through text-muted-foreground" : "text-foreground"}`}>{sub.title}</span>
+                        {/* Subtask date/time — inline, minimal */}
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <input type="date" value={sub.dueDate || ""} onChange={e => updateSub(sub.id, { dueDate: e.target.value })}
+                            className="px-2 py-0.5 rounded-lg bg-card text-[10px] text-muted-foreground outline-none focus:ring-1 focus:ring-primary/30 w-[120px]"
+                            title="Subtask date" />
+                          <input type="time" value={sub.dueTime || ""} onChange={e => updateSub(sub.id, { dueTime: e.target.value })}
+                            className="px-2 py-0.5 rounded-lg bg-card text-[10px] text-muted-foreground outline-none focus:ring-1 focus:ring-primary/30 w-[85px]"
+                            title="Subtask time" />
+                          {(sub.dueDate || sub.dueTime) && (
+                            <button type="button" onClick={() => updateSub(sub.id, { dueDate: undefined, dueTime: undefined })}
+                              className="text-muted-foreground/50 hover:text-destructive text-[9px]">clear</button>
+                          )}
+                        </div>
+                      </div>
                       <button type="button" onClick={() => removeSub(sub.id)}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5 mt-0.5">
                         <X size={11} />
                       </button>
                     </div>
