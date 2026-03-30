@@ -110,7 +110,9 @@ export function useGoogleCalendar(opts?: {
         try {
             // ── Push local tasks to Google Calendar ──
             const allTasks = await db.tasks.toArray();
-            const tasksToPush = allTasks.filter(t => t.dueDate && !t.gcalEventId);
+            // Push tasks that either have no gcalEventId, or have a deterministic mc-prefixed ID
+            // (which means it was assigned locally but may not exist in GCal yet)
+            const tasksToPush = allTasks.filter(t => t.dueDate && (!t.gcalEventId || t.gcalEventId.startsWith('mc')));
             if (tasksToPush.length > 0) {
                 const pushed = await pushTasksToGCal(tasksToPush);
                 for (const [taskId, gcalId] of pushed) {

@@ -524,7 +524,8 @@ export async function pushTasksToGCal(tasks: {
   const results = new Map<string, string>();
 
   for (const task of tasks) {
-    if (task.gcalEventId) continue;
+    // Skip tasks with non-deterministic GCal IDs (already confirmed in GCal)
+    if (task.gcalEventId && !task.gcalEventId.startsWith('mc')) continue;
     if (!task.dueDate) continue;
 
     try {
