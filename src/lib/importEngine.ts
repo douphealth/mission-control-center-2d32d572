@@ -1424,7 +1424,8 @@ export function autonomousImport(text: string, fileName?: string): AutonomousImp
     const allValues = parsedData.rows.flatMap(r => Object.values(r)).join(' ');
     const hasUrls = URL_REGEX.test(allValues);
     URL_REGEX.lastIndex = 0;
-    const fallbackTarget: ImportTarget = hasUrls ? 'websites' : 'tasks';
+    const hasGitHub = /github\.com/i.test(allValues);
+    const fallbackTarget: ImportTarget = hasGitHub ? 'repos' : hasUrls ? 'websites' : 'tasks';
     const fieldMap = autoMapFields(parsedData.sourceFields, fallbackTarget);
     const items = normalizeItems(parsedData.rows, fallbackTarget, fieldMap);
     if (items.length > 0) {
