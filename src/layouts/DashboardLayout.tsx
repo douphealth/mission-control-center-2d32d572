@@ -28,6 +28,7 @@ const CloudflarePage = lazy(() => import('@/pages/CloudflarePage'));
 const VercelPage = lazy(() => import('@/pages/VercelPage'));
 const OpenClawPage = lazy(() => import('@/pages/OpenClawPage'));
 const HabitsPage = lazy(() => import('@/pages/HabitsPage'));
+const CustomModulePage = lazy(() => import('@/pages/CustomModulePage'));
 
 const sectionMap: Record<string, React.LazyExoticComponent<any>> = {
   dashboard: DashboardHome,
