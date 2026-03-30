@@ -8,7 +8,7 @@ import {
   CheckSquare, Layers, TrendingUp, BarChart3, Copy, Bell
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Task } from "@/lib/db";
+import type { Task, Subtask } from "@/lib/db";
 import { REMINDER_LABELS, getReminderLabel, requestNotificationPermission } from "@/lib/notifications";
 import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
