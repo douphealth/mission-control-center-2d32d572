@@ -180,11 +180,25 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 </div>
               </div>
 
-              {/* Date + Category row */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Date range + Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Due Date</label>
-                  <input type="date" value={form.dueDate} onChange={e => uf("dueDate", e.target.value)}
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Start Date</label>
+                  <input type="date" value={form.startDate || form.dueDate} onChange={e => {
+                    uf("startDate", e.target.value);
+                    // If start > end, push end forward
+                    if (e.target.value > form.dueDate) uf("dueDate", e.target.value);
+                  }}
+                    className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">End Date</label>
+                  <input type="date" value={form.dueDate} onChange={e => {
+                    uf("dueDate", e.target.value);
+                    // If end < start, pull start back
+                    if (form.startDate && e.target.value < form.startDate) uf("startDate", e.target.value);
+                  }}
+                    min={form.startDate || undefined}
                     className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
@@ -195,6 +209,16 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                   </select>
                 </div>
               </div>
+              {/* Duration indicator */}
+              {form.startDate && form.startDate !== form.dueDate && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/5 text-xs text-primary">
+                  <ArrowRight size={12} />
+                  <span className="font-medium">
+                    {Math.ceil((new Date(form.dueDate).getTime() - new Date(form.startDate).getTime()) / 86400000) + 1} days
+                  </span>
+                  <span className="text-primary/60">({form.startDate} → {form.dueDate})</span>
+                </div>
+              )}
 
               {/* Time — syncs to calendar */}
               <div className="space-y-2">
