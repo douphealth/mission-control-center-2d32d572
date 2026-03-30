@@ -859,14 +859,43 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
     if (matches) score += Math.min(matches.length * 2, 10);
   }
 
+  // --- Detect GitHub/repo signals in content ---
+  const githubUrlCount = sampleRows.filter(r => Object.values(r).some(v => /github\.com/i.test(v))).length;
+  const lovableUrlCount = sampleRows.filter(r => Object.values(r).some(v => /lovable\.dev\/projects/i.test(v))).length;
+  const pagesDevCount = sampleRows.filter(r => Object.values(r).some(v => /\.pages\.dev/i.test(v))).length;
+  const isGitHubData = githubUrlCount > sampleRows.length * 0.3;
+  const hasRepoFieldSignals = sourceFields.some(f => {
+    const n = normalize(f);
+    return ['repositoryname', 'reponame', 'githublink', 'githuburl', 'cloudflarepage', 'lovableapp', 'lovableproject', 'pagesurl'].some(kw => n.includes(kw));
+  });
+  const hasLanguageField = sourceFields.some(f => normalize(f) === 'language' || normalize(f) === 'lang' || normalize(f) === 'programminglanguage');
+
   // --- Special boosts ---
+  if (target === 'repos') {
+    // Massive boost when GitHub URLs dominate the data
+    if (isGitHubData) score += 50;
+    if (hasRepoFieldSignals) score += 30;
+    if (hasLanguageField) score += 15;
+    if (lovableUrlCount > 0) score += lovableUrlCount * 3;
+    if (pagesDevCount > 0) score += pagesDevCount * 3;
+    // Boost for "Repository" appearing in field names
+    const repoFieldCount = sourceFields.filter(f => /repo|repository/i.test(f)).length;
+    if (repoFieldCount > 0) score += repoFieldCount * 10;
+  }
+
   if (target === 'websites') {
+    // PENALIZE websites when data is clearly GitHub repos
+    if (isGitHubData) score -= 40;
+    if (hasRepoFieldSignals) score -= 30;
+    if (hasLanguageField) score -= 20;
+
     const urlCount = sampleRows.filter(r => Object.values(r).some(v => URL_REGEX.test(v))).length;
     URL_REGEX.lastIndex = 0;
-    if (urlCount > sampleRows.length * 0.5) score += 15;
+    // Only boost URLs if NOT GitHub data
+    if (!isGitHubData && urlCount > sampleRows.length * 0.5) score += 15;
     const hasNameAndUrl = sourceFields.some(f => normalize(f) === 'name' || normalize(f) === 'site' || normalize(f) === 'website' || normalize(f) === 'domain') &&
                           sourceFields.some(f => normalize(f) === 'url' || normalize(f) === 'link' || normalize(f) === 'href' || normalize(f) === 'address');
-    if (hasNameAndUrl) score += 10;
+    if (hasNameAndUrl && !isGitHubData) score += 10;
     const websiteKeywords = ['wpadmin', 'wordpress', 'hosting', 'hostingprovider', 'wpusername', 'wppassword', 'siteurl', 'adminurl', 'hostinglogin', 'cpanel', 'nameserver', 'dns', 'ssl'];
     const keywordHits = sourceFields.filter(f => websiteKeywords.some(kw => normalize(f).includes(kw))).length;
     if (keywordHits > 0) score += keywordHits * 8;
@@ -876,17 +905,26 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
       URL_REGEX.lastIndex = 0;
       return matches && matches.length >= 2;
     }).length;
-    if (multiUrlRows > 0) score += 12;
+    if (multiUrlRows > 0 && !isGitHubData) score += 12;
   }
 
   if (target === 'links') {
+    // Penalize links for GitHub/repo data
+    if (isGitHubData) score -= 30;
+    if (hasRepoFieldSignals) score -= 20;
     const hasWebsiteSignals = sourceFields.some(f => ['site', 'website', 'domain', 'hosting', 'wp', 'wpadmin', 'wordpress', 'hostingprovider', 'wpusername', 'wppassword', 'adminurl'].some(kw => normalize(f).includes(kw)));
     if (hasWebsiteSignals) score -= 15;
+  }
+
+  if (target === 'buildProjects') {
+    // Penalize buildProjects when it's clearly repos
+    if (isGitHubData && hasRepoFieldSignals) score -= 20;
   }
 
   if (target === 'credentials') {
     const hasWebsiteSignals = sourceFields.some(f => ['hosting', 'wpadmin', 'wordpress', 'hostingprovider', 'siteurl'].some(kw => normalize(f).includes(kw)));
     if (hasWebsiteSignals) score -= 10;
+    if (isGitHubData) score -= 20;
   }
 
   // Boost payments when currency/amount patterns found
@@ -894,15 +932,16 @@ function scoreCategory(sourceFields: string[], rows: Record<string, string>[], t
     const hasCurrency = CURRENCY_REGEX.test(allValues);
     CURRENCY_REGEX.lastIndex = 0;
     if (hasCurrency) score += 15;
-    // Check for __type marker from NLP plain-text parsing
     const paymentMarkers = sampleRows.filter(r => r.__type === 'payments').length;
     if (paymentMarkers > 0) score += paymentMarkers * 5;
+    if (isGitHubData) score -= 20;
   }
 
   // Boost tasks when NLP markers found
   if (target === 'tasks') {
     const taskMarkers = sampleRows.filter(r => r.dueDate || r.priority || r.status).length;
     if (taskMarkers > 0) score += taskMarkers * 3;
+    if (isGitHubData) score -= 20;
   }
 
   return score;
