@@ -11,7 +11,20 @@ import { toast } from "sonner";
 
 const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScript: "bg-yellow-400", Python: "bg-blue-400", PHP: "bg-purple-500", HTML: "bg-orange-500", Go: "bg-sky-400", Rust: "bg-orange-600", Ruby: "bg-red-500" };
 
-const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0], devPlatformUrl: "", deploymentUrl: "" };
+const DB_TYPES = [
+  { value: "", label: "None" },
+  { value: "supabase", label: "🟢 Supabase" },
+  { value: "firebase", label: "🔥 Firebase" },
+  { value: "neon", label: "⚡ Neon" },
+  { value: "planetscale", label: "🪐 PlanetScale" },
+  { value: "railway", label: "🚂 Railway" },
+  { value: "mongodb", label: "🍃 MongoDB" },
+  { value: "postgres", label: "🐘 PostgreSQL" },
+  { value: "mysql", label: "🐬 MySQL" },
+  { value: "other", label: "📦 Other" },
+];
+
+const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0], devPlatformUrl: "", deploymentUrl: "", dbType: undefined, dbUrl: "", dbDashboardUrl: "", dbName: "", dbNotes: "" };
 
 export default function GitHubPage() {
   const { repos, updateData, duplicateItem } = useDashboard();
