@@ -68,16 +68,43 @@ function getTable(tableName: string) {
 // ─── Supabase push debounce ─────────────────────────────────────────────────────
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let saveStatusCallbacks: ((status: 'saving' | 'saved' | 'error') => void)[] = [];
+
+export function onSaveStatus(cb: (status: 'saving' | 'saved' | 'error') => void) {
+    saveStatusCallbacks.push(cb);
+    return () => { saveStatusCallbacks = saveStatusCallbacks.filter(c => c !== cb); };
+}
+
+function notifySaveStatus(status: 'saving' | 'saved' | 'error') {
+    saveStatusCallbacks.forEach(cb => cb(status));
+}
 
 function schedulePush() {
-    if (!isSupabaseConnected()) return;
+    // Always mark local save as done immediately (IndexedDB write already happened)
+    notifySaveStatus('saving');
+    if (!isSupabaseConnected()) {
+        // No cloud — still "saved" locally
+        notifySaveStatus('saved');
+        return;
+    }
     if (pushTimer) clearTimeout(pushTimer);
     pushTimer = setTimeout(() => {
         pushToSupabase().then(r => {
-            if (r.success) console.log(`☁️ Auto-pushed ${r.synced} items`);
-            else console.warn('☁️ Auto-push failed:', r.error);
+            if (r.success) {
+                console.log(`☁️ Auto-pushed ${r.synced} items`);
+                notifySaveStatus('saved');
+            } else {
+                console.warn('☁️ Auto-push failed:', r.error);
+                notifySaveStatus('error');
+                // Retry once after 5s
+                setTimeout(() => {
+                    pushToSupabase().then(r2 => {
+                        notifySaveStatus(r2.success ? 'saved' : 'error');
+                    });
+                }, 5000);
+            }
         });
-    }, 2000);
+    }, 1000); // Reduced from 2s to 1s for faster cross-device sync
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────────
@@ -179,21 +206,39 @@ export const useDataStore = create<DataState>((set, _get) => ({
 
     // ─── Export ────────────────────────────────────────────────────────────────
     exportAllData: async (): Promise<string> => {
+        const [websites, tasks, repos, buildProjects, links, notes, payments, ideas, credentials, customModules, habits, settings] = await Promise.all([
+            db.websites.toArray(),
+            db.tasks.toArray(),
+            db.repos.toArray(),
+            db.buildProjects.toArray(),
+            db.links.toArray(),
+            db.notes.toArray(),
+            db.payments.toArray(),
+            db.ideas.toArray(),
+            db.credentials.toArray(),
+            db.customModules.toArray(),
+            db.habits.toArray(),
+            db.settings.get('default'),
+        ]);
         const data = {
-            websites: await db.websites.toArray(),
-            tasks: await db.tasks.toArray(),
-            repos: await db.repos.toArray(),
-            buildProjects: await db.buildProjects.toArray(),
-            links: await db.links.toArray(),
-            notes: await db.notes.toArray(),
-            payments: await db.payments.toArray(),
-            ideas: await db.ideas.toArray(),
-            credentials: await db.credentials.toArray(),
-            customModules: await db.customModules.toArray(),
-            habits: await db.habits.toArray(),
-            settings: await db.settings.get('default'),
+            websites, tasks, repos, buildProjects, links, notes, payments, ideas,
+            credentials, customModules, habits, settings,
+            _meta: {
+                exportedAt: new Date().toISOString(),
+                version: '9.1',
+                counts: {
+                    websites: websites.length, tasks: tasks.length, repos: repos.length,
+                    buildProjects: buildProjects.length, links: links.length, notes: notes.length,
+                    payments: payments.length, ideas: ideas.length, credentials: credentials.length,
+                    customModules: customModules.length, habits: habits.length,
+                },
+                totalItems: websites.length + tasks.length + repos.length + buildProjects.length +
+                    links.length + notes.length + payments.length + ideas.length +
+                    credentials.length + customModules.length + habits.length,
+            },
+            // Legacy compat fields
             exportedAt: new Date().toISOString(),
-            version: '9.0',
+            version: '9.1',
         };
         return JSON.stringify(data, null, 2);
     },
@@ -201,6 +246,8 @@ export const useDataStore = create<DataState>((set, _get) => ({
     // ─── Import ────────────────────────────────────────────────────────────────
     importAllData: async (json: string): Promise<void> => {
         const data = JSON.parse(json);
+        // Validate it's a Mission Control backup
+        if (!data || typeof data !== 'object') throw new Error('Invalid backup file');
         const tableMap: Record<string, any> = {
             websites: db.websites,
             tasks: db.tasks,
@@ -214,12 +261,15 @@ export const useDataStore = create<DataState>((set, _get) => ({
             customModules: db.customModules,
             habits: db.habits,
         };
-        for (const [key, table] of Object.entries(tableMap)) {
-            if (data[key]) {
-                await table.clear();
-                await table.bulkPut(data[key]);
+        // Use a transaction for atomicity
+        await db.transaction('rw', Object.values(tableMap), async () => {
+            for (const [key, table] of Object.entries(tableMap)) {
+                if (data[key] && Array.isArray(data[key])) {
+                    await table.clear();
+                    if (data[key].length > 0) await table.bulkPut(data[key]);
+                }
             }
-        }
+        });
         if (data.settings) await db.settings.put({ ...data.settings, id: 'default' });
         // Reload settings
         const { useSettingsStore } = await import('@/stores/settingsStore');
