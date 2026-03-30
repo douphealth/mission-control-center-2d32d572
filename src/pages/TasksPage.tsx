@@ -5,7 +5,7 @@ import {
   Plus, Search, CheckCircle2, Circle, AlertTriangle, Edit2, Trash2,
   GripVertical, ChevronDown, LayoutGrid, List, Flag, Tag, Calendar,
   X, Clock, ArrowRight, Zap, Target, Flame, Filter, MoreHorizontal,
-  CheckSquare, Layers, TrendingUp, BarChart3, Copy, Bell
+  CheckSquare, Layers, TrendingUp, BarChart3, Copy, Bell, Repeat, CalendarRange
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Task, Subtask } from "@/lib/db";
@@ -246,7 +246,99 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 )}
               </div>
 
-              {/* Reminders — Google Calendar style */}
+              {/* Recurrence — Google Calendar style */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2 flex items-center gap-1.5">
+                  <Repeat size={12} className="text-primary" /> Repeat
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[
+                    { key: undefined, label: 'None' },
+                    { key: 'daily', label: 'Daily' },
+                    { key: 'weekdays', label: 'Weekdays' },
+                    { key: 'weekly', label: 'Weekly' },
+                    { key: 'biweekly', label: 'Bi-weekly' },
+                    { key: 'monthly', label: 'Monthly' },
+                    { key: 'yearly', label: 'Yearly' },
+                    { key: 'custom', label: 'Custom' },
+                  ].map(opt => (
+                    <button key={opt.label} type="button" onClick={() => {
+                      if (opt.key) {
+                        uf("recurring", true);
+                        uf("recurringInterval", opt.key);
+                      } else {
+                        uf("recurring", false);
+                        uf("recurringInterval", undefined);
+                      }
+                    }}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all touch-manipulation ${
+                        (opt.key === undefined && !form.recurring) || (form.recurring && form.recurringInterval === opt.key)
+                          ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Custom interval */}
+                {form.recurring && form.recurringInterval === 'custom' && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs text-muted-foreground">Every</span>
+                    <input type="number" min="1" value={form.recurringCustomDays || 1}
+                      onChange={e => uf("recurringCustomDays", Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-16 px-2 py-1.5 rounded-xl bg-secondary text-foreground text-sm outline-none text-center" />
+                    <span className="text-xs text-muted-foreground">days</span>
+                  </div>
+                )}
+                {/* End condition */}
+                {form.recurring && (
+                  <div className="space-y-2 p-3 rounded-xl bg-secondary/30 border border-border/20">
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Ends</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { key: 'never', label: '♾️ Never', desc: 'Repeats forever (birthdays, etc.)' },
+                        { key: 'date', label: '📅 On date', desc: 'Stops on a specific date' },
+                        { key: 'count', label: '🔢 After N times', desc: 'Stops after N completions' },
+                      ].map(opt => (
+                        <button key={opt.key} type="button" onClick={() => uf("recurringEndType", opt.key)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all touch-manipulation ${
+                            (form.recurringEndType || 'never') === opt.key
+                              ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                              : "bg-secondary text-muted-foreground hover:text-foreground"
+                          }`}
+                          title={opt.desc}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    {(form.recurringEndType || 'never') === 'date' && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <CalendarRange size={12} className="text-muted-foreground" />
+                        <input type="date" value={form.recurringEndDate || ""}
+                          onChange={e => uf("recurringEndDate", e.target.value)}
+                          min={form.dueDate}
+                          className="px-3 py-1.5 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                      </div>
+                    )}
+                    {form.recurringEndType === 'count' && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">After</span>
+                        <input type="number" min="1" value={form.recurringEndCount || 10}
+                          onChange={e => uf("recurringEndCount", Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-16 px-2 py-1.5 rounded-xl bg-secondary text-foreground text-sm outline-none text-center" />
+                        <span className="text-xs text-muted-foreground">times</span>
+                        {(form.recurringCompletedCount || 0) > 0 && (
+                          <span className="text-[10px] text-primary ml-auto">({form.recurringCompletedCount} done)</span>
+                        )}
+                      </div>
+                    )}
+                    {(form.recurringEndType || 'never') === 'never' && (
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">Perfect for birthdays, anniversaries, recurring meetings</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2 flex items-center gap-1.5">
                   <Bell size={12} className="text-primary" /> Reminders

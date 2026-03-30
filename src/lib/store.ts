@@ -51,6 +51,11 @@ export interface GitHubRepo {
   lastUpdated: string;
   devPlatformUrl?: string;
   deploymentUrl?: string;
+  dbType?: 'supabase' | 'firebase' | 'planetscale' | 'neon' | 'railway' | 'mongodb' | 'postgres' | 'mysql' | 'other';
+  dbUrl?: string;
+  dbDashboardUrl?: string;
+  dbName?: string;
+  dbNotes?: string;
 }
 
 export interface BuildProject {

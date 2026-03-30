@@ -1,7 +1,7 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search, Rocket, Code2, CheckSquare, Copy } from "lucide-react";
+import { ExternalLink, Star, GitFork, Trash2, Plus, Edit2, Search, Rocket, Code2, CheckSquare, Copy, Database } from "lucide-react";
 import FormModal, { FormField, FormInput, FormTextarea, FormSelect, FormTagsInput } from "@/components/FormModal";
 import type { GitHubRepo } from "@/lib/store";
 import { useBulkActions } from "@/hooks/useBulkActions";
@@ -11,7 +11,20 @@ import { toast } from "sonner";
 
 const langColors: Record<string, string> = { TypeScript: "bg-blue-500", JavaScript: "bg-yellow-400", Python: "bg-blue-400", PHP: "bg-purple-500", HTML: "bg-orange-500", Go: "bg-sky-400", Rust: "bg-orange-600", Ruby: "bg-red-500" };
 
-const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0], devPlatformUrl: "", deploymentUrl: "" };
+const DB_TYPES = [
+  { value: "", label: "None" },
+  { value: "supabase", label: "🟢 Supabase" },
+  { value: "firebase", label: "🔥 Firebase" },
+  { value: "neon", label: "⚡ Neon" },
+  { value: "planetscale", label: "🪐 PlanetScale" },
+  { value: "railway", label: "🚂 Railway" },
+  { value: "mongodb", label: "🍃 MongoDB" },
+  { value: "postgres", label: "🐘 PostgreSQL" },
+  { value: "mysql", label: "🐬 MySQL" },
+  { value: "other", label: "📦 Other" },
+];
+
+const emptyRepo: Omit<GitHubRepo, "id"> = { name: "", url: "", description: "", language: "TypeScript", stars: 0, forks: 0, status: "active", demoUrl: "", progress: 0, topics: [], lastUpdated: new Date().toISOString().split("T")[0], devPlatformUrl: "", deploymentUrl: "", dbType: undefined, dbUrl: "", dbDashboardUrl: "", dbName: "", dbNotes: "" };
 
 export default function GitHubPage() {
   const { repos, updateData, duplicateItem } = useDashboard();
@@ -123,6 +136,8 @@ export default function GitHubPage() {
               {repo.demoUrl && <a href={repo.demoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">🌐 Demo</a>}
               {repo.devPlatformUrl && <a href={repo.devPlatformUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Code2 size={12} /> Platform</a>}
               {repo.deploymentUrl && <a href={repo.deploymentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Rocket size={12} /> Deploy</a>}
+              {repo.dbType && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Database size={11} /> {DB_TYPES.find(d => d.value === repo.dbType)?.label || repo.dbType}</span>}
+              {repo.dbDashboardUrl && <a href={repo.dbDashboardUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">🔗 DB</a>}
               {!bulk.bulkMode && (
                 <div className="ml-auto flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button onClick={() => duplicateRepo(repo.id)} className="text-muted-foreground hover:text-blue-500 p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Duplicate"><Copy size={14} /></button>
@@ -161,6 +176,26 @@ export default function GitHubPage() {
         <FormField label="Dev Platform URL"><FormInput value={form.devPlatformUrl || ""} onChange={v => uf("devPlatformUrl", v)} placeholder="https://bolt.new/..., lovable.dev/..., replit.com/..." /></FormField>
         <FormField label="Deployment Gateway URL"><FormInput value={form.deploymentUrl || ""} onChange={v => uf("deploymentUrl", v)} placeholder="https://vercel.com/..., cloudways.com/..., netlify.app/..." /></FormField>
         <FormField label="Topics"><FormTagsInput value={form.topics} onChange={v => uf("topics", v)} placeholder="Add topic and press Enter" /></FormField>
+        {/* Database Connection */}
+        <div className="border-t border-border/30 pt-4 mt-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Database size={14} className="text-primary" />
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Database Connection</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <FormField label="DB Type">
+              <FormSelect value={form.dbType || ""} onChange={v => uf("dbType", v || undefined)} options={DB_TYPES} />
+            </FormField>
+            <FormField label="DB Name"><FormInput value={form.dbName || ""} onChange={v => uf("dbName", v)} placeholder="my-project-db" /></FormField>
+          </div>
+          {form.dbType && (
+            <>
+              <FormField label="DB URL / Connection String"><FormInput value={form.dbUrl || ""} onChange={v => uf("dbUrl", v)} placeholder={form.dbType === 'supabase' ? 'https://xxxxx.supabase.co' : 'postgresql://...'} /></FormField>
+              <FormField label="DB Dashboard URL"><FormInput value={form.dbDashboardUrl || ""} onChange={v => uf("dbDashboardUrl", v)} placeholder={form.dbType === 'supabase' ? 'https://supabase.com/dashboard/project/xxxxx' : 'https://...'} /></FormField>
+              <FormField label="DB Notes"><FormTextarea value={form.dbNotes || ""} onChange={v => uf("dbNotes", v)} placeholder="API keys, special config notes..." rows={2} /></FormField>
+            </>
+          )}
+        </div>
       </FormModal>
 
       <ConfirmDialog {...cd.dialogProps} />
