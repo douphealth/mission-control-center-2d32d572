@@ -246,9 +246,9 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 )}
               </div>
 
-              {/* Reminders (multiple) */}
+              {/* Reminders — Google Calendar style */}
               <div>
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 flex items-center gap-1.5">
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2 flex items-center gap-1.5">
                   <Bell size={12} className="text-primary" /> Reminders
                 </label>
                 {/* Existing reminders */}
@@ -268,46 +268,50 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                     </div>
                   ))}
                 </div>
-                {/* Add reminder */}
-                <div className="flex gap-2">
-                  <select
-                    id="add-reminder-select"
-                    defaultValue=""
-                    className="flex-1 px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none appearance-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="" disabled>Add a reminder…</option>
-                    {Object.entries(REMINDER_LABELS).filter(([k]) => k !== 'none').map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                    <option value="__custom">Custom…</option>
-                  </select>
-                  <button type="button" onClick={async () => {
-                    const sel = document.getElementById('add-reminder-select') as HTMLSelectElement;
-                    const val = sel.value;
-                    if (!val) return;
-
-                    if (val === '__custom') {
-                      // Show custom input prompt
-                      const mins = prompt("Enter reminder time in minutes before due (e.g., 10 for 10 minutes, 120 for 2 hours, 1440 for 1 day):");
-                      if (!mins) return;
-                      const parsed = parseInt(mins, 10);
-                      if (isNaN(parsed) || parsed < 0) { toast.error("Enter a valid number of minutes"); return; }
-                      const key = parsed === 0 ? 'at-time' : `custom:${parsed}`;
-                      if ((form.reminders || []).includes(key)) { toast.info("Reminder already added"); return; }
+                {/* Quick-add preset chips — like Google Calendar */}
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[
+                    { key: 'at-time', label: 'At time' },
+                    { key: '5min', label: '5 min' },
+                    { key: '15min', label: '15 min' },
+                    { key: '30min', label: '30 min' },
+                    { key: '1hr', label: '1 hour' },
+                    { key: '2hr', label: '2 hours' },
+                    { key: '1day', label: '1 day' },
+                    { key: 'custom:2880', label: '2 days' },
+                    { key: 'custom:4320', label: '3 days' },
+                    { key: 'custom:10080', label: '1 week' },
+                  ].filter(p => !(form.reminders || []).includes(p.key)).map(preset => (
+                    <button key={preset.key} type="button" onClick={async () => {
+                      uf("reminders", [...(form.reminders || []), preset.key]);
+                      uf("remindersFired", []);
+                      const granted = await requestNotificationPermission();
+                      if (!granted) toast.info("Enable browser notifications for push alerts");
+                    }}
+                      className="px-2.5 py-1 rounded-lg bg-secondary text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 hover:text-primary transition-colors touch-manipulation">
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Custom minutes input */}
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number" min="1" placeholder="Custom minutes..."
+                    className="flex-1 px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/50"
+                    onKeyDown={async (e) => {
+                      if (e.key !== 'Enter') return;
+                      const mins = parseInt(e.currentTarget.value, 10);
+                      if (isNaN(mins) || mins < 1) { toast.error("Enter a valid number"); return; }
+                      const key = `custom:${mins}`;
+                      if ((form.reminders || []).includes(key)) { toast.info("Already added"); return; }
                       uf("reminders", [...(form.reminders || []), key]);
-                    } else {
-                      if ((form.reminders || []).includes(val)) { toast.info("Reminder already added"); return; }
-                      uf("reminders", [...(form.reminders || []), val]);
-                    }
-
-                    uf("remindersFired", []);
-                    sel.value = "";
-
-                    const granted = await requestNotificationPermission();
-                    if (!granted) toast.info("Enable browser notifications for push alerts");
-                  }} className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-                    <Plus size={14} />
-                  </button>
+                      uf("remindersFired", []);
+                      e.currentTarget.value = "";
+                      const granted = await requestNotificationPermission();
+                      if (!granted) toast.info("Enable browser notifications for push alerts");
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">min before</span>
                 </div>
               </div>
 
