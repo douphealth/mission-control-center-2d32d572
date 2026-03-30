@@ -68,16 +68,43 @@ function getTable(tableName: string) {
 // ─── Supabase push debounce ─────────────────────────────────────────────────────
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let saveStatusCallbacks: ((status: 'saving' | 'saved' | 'error') => void)[] = [];
+
+export function onSaveStatus(cb: (status: 'saving' | 'saved' | 'error') => void) {
+    saveStatusCallbacks.push(cb);
+    return () => { saveStatusCallbacks = saveStatusCallbacks.filter(c => c !== cb); };
+}
+
+function notifySaveStatus(status: 'saving' | 'saved' | 'error') {
+    saveStatusCallbacks.forEach(cb => cb(status));
+}
 
 function schedulePush() {
-    if (!isSupabaseConnected()) return;
+    // Always mark local save as done immediately (IndexedDB write already happened)
+    notifySaveStatus('saving');
+    if (!isSupabaseConnected()) {
+        // No cloud — still "saved" locally
+        notifySaveStatus('saved');
+        return;
+    }
     if (pushTimer) clearTimeout(pushTimer);
     pushTimer = setTimeout(() => {
         pushToSupabase().then(r => {
-            if (r.success) console.log(`☁️ Auto-pushed ${r.synced} items`);
-            else console.warn('☁️ Auto-push failed:', r.error);
+            if (r.success) {
+                console.log(`☁️ Auto-pushed ${r.synced} items`);
+                notifySaveStatus('saved');
+            } else {
+                console.warn('☁️ Auto-push failed:', r.error);
+                notifySaveStatus('error');
+                // Retry once after 5s
+                setTimeout(() => {
+                    pushToSupabase().then(r2 => {
+                        notifySaveStatus(r2.success ? 'saved' : 'error');
+                    });
+                }, 5000);
+            }
         });
-    }, 2000);
+    }, 1000); // Reduced from 2s to 1s for faster cross-device sync
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────────
