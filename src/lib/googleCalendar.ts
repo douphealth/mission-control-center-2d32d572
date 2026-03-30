@@ -436,6 +436,7 @@ export async function createGCalEvent(
     description?: string;
     start: { dateTime?: string; date?: string; timeZone?: string };
     end: { dateTime?: string; date?: string; timeZone?: string };
+    recurrence?: string[];
   },
   deterministicId?: string,
 ): Promise<GoogleCalendarEvent> {
@@ -452,9 +453,19 @@ export async function createGCalEvent(
     }
   );
 
-  // 409 = event with this ID already exists — not an error, just skip
-  if (resp.status === 409) {
-    return { id: deterministicId!, summary: event.summary, start: event.start, end: event.end } as GoogleCalendarEvent;
+  // 409 = event with this ID already exists — update it instead (e.g. to add recurrence)
+  if (resp.status === 409 && deterministicId) {
+    try {
+      const updateResp = await gcalFetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${deterministicId}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ ...event }),
+        }
+      );
+      if (updateResp.ok) return updateResp.json();
+    } catch { /* fall through */ }
+    return { id: deterministicId, summary: event.summary, start: event.start, end: event.end } as GoogleCalendarEvent;
   }
 
   if (!resp.ok) throw new Error(`Failed to create event: ${resp.statusText}`);
