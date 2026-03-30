@@ -26,16 +26,25 @@ export interface Website {
     tags?: string[];
 }
 
+export interface Subtask {
+    id: string;
+    title: string;
+    done: boolean;
+    dueDate?: string;   // optional date for subtask
+    dueTime?: string;   // optional HH:MM for subtask
+}
+
 export interface Task {
     id: string;
     title: string;
     priority: 'critical' | 'high' | 'medium' | 'low';
     status: 'todo' | 'in-progress' | 'blocked' | 'done';
-    dueDate: string;
+    startDate?: string;  // start of date range (YYYY-MM-DD)
+    dueDate: string;     // end date / due date (YYYY-MM-DD)
     category: string;
     description: string;
     linkedProject: string;
-    subtasks: { id: string; title: string; done: boolean }[];
+    subtasks: Subtask[];
     createdAt: string;
     completedAt?: string;
     tags?: string[];
