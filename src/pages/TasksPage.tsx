@@ -8,7 +8,7 @@ import {
   CheckSquare, Layers, TrendingUp, BarChart3, Copy, Bell
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Task } from "@/lib/db";
+import type { Task, Subtask } from "@/lib/db";
 import { REMINDER_LABELS, getReminderLabel, requestNotificationPermission } from "@/lib/notifications";
 import ConfirmDialog, { useConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -51,7 +51,7 @@ function daysUntil(date: string) {
 
 const EMPTY: Omit<Task, "id"> = {
   title: "", priority: "medium", status: "todo",
-  dueDate: today, category: "General",
+  startDate: today, dueDate: today, category: "General",
   description: "", linkedProject: "",
   subtasks: [], createdAt: today,
   reminder: 'none', reminderFired: false,
@@ -81,11 +81,12 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
 
   const addSub = () => {
     if (!newSub.trim()) return;
-    uf("subtasks", [...form.subtasks, { id: `s-${Date.now()}`, title: newSub.trim(), done: false }]);
+    uf("subtasks", [...form.subtasks, { id: `s-${Date.now()}`, title: newSub.trim(), done: false } as Subtask]);
     setNewSub("");
   };
-  const removeSub = (id: string) => uf("subtasks", form.subtasks.filter(s => s.id !== id));
-  const toggleSub = (id: string) => uf("subtasks", form.subtasks.map(s => s.id === id ? { ...s, done: !s.done } : s));
+  const removeSub = (id: string) => uf("subtasks", form.subtasks.filter((s: Subtask) => s.id !== id));
+  const toggleSub = (id: string) => uf("subtasks", form.subtasks.map((s: Subtask) => s.id === id ? { ...s, done: !s.done } : s));
+  const updateSub = (id: string, changes: Partial<Subtask>) => uf("subtasks", form.subtasks.map((s: Subtask) => s.id === id ? { ...s, ...changes } : s));
 
   const save = () => {
     if (!form.title.trim()) { toast.error("Title required"); return; }
@@ -179,11 +180,25 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 </div>
               </div>
 
-              {/* Date + Category row */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Date range + Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Due Date</label>
-                  <input type="date" value={form.dueDate} onChange={e => uf("dueDate", e.target.value)}
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Start Date</label>
+                  <input type="date" value={form.startDate || form.dueDate} onChange={e => {
+                    uf("startDate", e.target.value);
+                    // If start > end, push end forward
+                    if (e.target.value > form.dueDate) uf("dueDate", e.target.value);
+                  }}
+                    className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">End Date</label>
+                  <input type="date" value={form.dueDate} onChange={e => {
+                    uf("dueDate", e.target.value);
+                    // If end < start, pull start back
+                    if (form.startDate && e.target.value < form.startDate) uf("startDate", e.target.value);
+                  }}
+                    min={form.startDate || undefined}
                     className="w-full px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
@@ -194,6 +209,16 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                   </select>
                 </div>
               </div>
+              {/* Duration indicator */}
+              {form.startDate && form.startDate !== form.dueDate && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/5 text-xs text-primary">
+                  <ArrowRight size={12} />
+                  <span className="font-medium">
+                    {Math.ceil((new Date(form.dueDate).getTime() - new Date(form.startDate).getTime()) / 86400000) + 1} days
+                  </span>
+                  <span className="text-primary/60">({form.startDate} → {form.dueDate})</span>
+                </div>
+              )}
 
               {/* Time — syncs to calendar */}
               <div className="space-y-2">
@@ -221,9 +246,9 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                 )}
               </div>
 
-              {/* Reminders (multiple) */}
+              {/* Reminders — Google Calendar style */}
               <div>
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5 flex items-center gap-1.5">
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2 flex items-center gap-1.5">
                   <Bell size={12} className="text-primary" /> Reminders
                 </label>
                 {/* Existing reminders */}
@@ -243,46 +268,50 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
                     </div>
                   ))}
                 </div>
-                {/* Add reminder */}
-                <div className="flex gap-2">
-                  <select
-                    id="add-reminder-select"
-                    defaultValue=""
-                    className="flex-1 px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none appearance-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="" disabled>Add a reminder…</option>
-                    {Object.entries(REMINDER_LABELS).filter(([k]) => k !== 'none').map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                    <option value="__custom">Custom…</option>
-                  </select>
-                  <button type="button" onClick={async () => {
-                    const sel = document.getElementById('add-reminder-select') as HTMLSelectElement;
-                    const val = sel.value;
-                    if (!val) return;
-
-                    if (val === '__custom') {
-                      // Show custom input prompt
-                      const mins = prompt("Enter reminder time in minutes before due (e.g., 10 for 10 minutes, 120 for 2 hours, 1440 for 1 day):");
-                      if (!mins) return;
-                      const parsed = parseInt(mins, 10);
-                      if (isNaN(parsed) || parsed < 0) { toast.error("Enter a valid number of minutes"); return; }
-                      const key = parsed === 0 ? 'at-time' : `custom:${parsed}`;
-                      if ((form.reminders || []).includes(key)) { toast.info("Reminder already added"); return; }
+                {/* Quick-add preset chips — like Google Calendar */}
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[
+                    { key: 'at-time', label: 'At time' },
+                    { key: '5min', label: '5 min' },
+                    { key: '15min', label: '15 min' },
+                    { key: '30min', label: '30 min' },
+                    { key: '1hr', label: '1 hour' },
+                    { key: '2hr', label: '2 hours' },
+                    { key: '1day', label: '1 day' },
+                    { key: 'custom:2880', label: '2 days' },
+                    { key: 'custom:4320', label: '3 days' },
+                    { key: 'custom:10080', label: '1 week' },
+                  ].filter(p => !(form.reminders || []).includes(p.key)).map(preset => (
+                    <button key={preset.key} type="button" onClick={async () => {
+                      uf("reminders", [...(form.reminders || []), preset.key]);
+                      uf("remindersFired", []);
+                      const granted = await requestNotificationPermission();
+                      if (!granted) toast.info("Enable browser notifications for push alerts");
+                    }}
+                      className="px-2.5 py-1 rounded-lg bg-secondary text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 hover:text-primary transition-colors touch-manipulation">
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Custom minutes input */}
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number" min="1" placeholder="Custom minutes..."
+                    className="flex-1 px-3 py-2 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/50"
+                    onKeyDown={async (e) => {
+                      if (e.key !== 'Enter') return;
+                      const mins = parseInt(e.currentTarget.value, 10);
+                      if (isNaN(mins) || mins < 1) { toast.error("Enter a valid number"); return; }
+                      const key = `custom:${mins}`;
+                      if ((form.reminders || []).includes(key)) { toast.info("Already added"); return; }
                       uf("reminders", [...(form.reminders || []), key]);
-                    } else {
-                      if ((form.reminders || []).includes(val)) { toast.info("Reminder already added"); return; }
-                      uf("reminders", [...(form.reminders || []), val]);
-                    }
-
-                    uf("remindersFired", []);
-                    sel.value = "";
-
-                    const granted = await requestNotificationPermission();
-                    if (!granted) toast.info("Enable browser notifications for push alerts");
-                  }} className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-                    <Plus size={14} />
-                  </button>
+                      uf("remindersFired", []);
+                      e.currentTarget.value = "";
+                      const granted = await requestNotificationPermission();
+                      if (!granted) toast.info("Enable browser notifications for push alerts");
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">min before</span>
                 </div>
               </div>
 
@@ -297,18 +326,33 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
               {/* Subtasks */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2">
-                  Subtasks {form.subtasks.length > 0 && <span className="text-primary">({form.subtasks.filter(s => s.done).length}/{form.subtasks.length})</span>}
+                  Subtasks {form.subtasks.length > 0 && <span className="text-primary">({form.subtasks.filter((s: Subtask) => s.done).length}/{form.subtasks.length})</span>}
                 </label>
                 <div className="space-y-1.5 mb-2">
-                  {form.subtasks.map(sub => (
-                    <div key={sub.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/50 group">
+                  {form.subtasks.map((sub: Subtask) => (
+                    <div key={sub.id} className="flex items-start gap-2 px-3 py-2 rounded-xl bg-secondary/50 group">
                       <button type="button" onClick={() => toggleSub(sub.id)}
-                        className={`shrink-0 transition-colors ${sub.done ? "text-emerald-500" : "text-muted-foreground hover:text-primary"}`}>
+                        className={`shrink-0 mt-0.5 transition-colors ${sub.done ? "text-emerald-500" : "text-muted-foreground hover:text-primary"}`}>
                         {sub.done ? <CheckCircle2 size={14} /> : <Circle size={14} />}
                       </button>
-                      <span className={`flex-1 text-sm ${sub.done ? "line-through text-muted-foreground" : "text-foreground"}`}>{sub.title}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-sm block ${sub.done ? "line-through text-muted-foreground" : "text-foreground"}`}>{sub.title}</span>
+                        {/* Subtask date/time — inline, minimal */}
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <input type="date" value={sub.dueDate || ""} onChange={e => updateSub(sub.id, { dueDate: e.target.value })}
+                            className="px-2 py-0.5 rounded-lg bg-card text-[10px] text-muted-foreground outline-none focus:ring-1 focus:ring-primary/30 w-[120px]"
+                            title="Subtask date" />
+                          <input type="time" value={sub.dueTime || ""} onChange={e => updateSub(sub.id, { dueTime: e.target.value })}
+                            className="px-2 py-0.5 rounded-lg bg-card text-[10px] text-muted-foreground outline-none focus:ring-1 focus:ring-primary/30 w-[85px]"
+                            title="Subtask time" />
+                          {(sub.dueDate || sub.dueTime) && (
+                            <button type="button" onClick={() => updateSub(sub.id, { dueDate: undefined, dueTime: undefined })}
+                              className="text-muted-foreground/50 hover:text-destructive text-[9px]">clear</button>
+                          )}
+                        </div>
+                      </div>
                       <button type="button" onClick={() => removeSub(sub.id)}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5">
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5 mt-0.5">
                         <X size={11} />
                       </button>
                     </div>
