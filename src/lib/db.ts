@@ -49,7 +49,12 @@ export interface Task {
     completedAt?: string;
     tags?: string[];
     recurring?: boolean;
-    recurringInterval?: string;
+    recurringInterval?: 'daily' | 'weekdays' | 'weekly' | 'biweekly' | 'monthly' | 'yearly' | 'custom';
+    recurringCustomDays?: number;       // custom interval in days
+    recurringEndType?: 'never' | 'date' | 'count';  // when recurrence stops
+    recurringEndDate?: string;          // YYYY-MM-DD — if endType is 'date'
+    recurringEndCount?: number;         // N occurrences — if endType is 'count'
+    recurringCompletedCount?: number;   // how many times completed so far
     startTime?: string;   // HH:MM — calendar time support
     endTime?: string;     // HH:MM — calendar time support
     allDay?: boolean;     // defaults to true if not set
