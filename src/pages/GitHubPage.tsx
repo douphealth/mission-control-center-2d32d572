@@ -136,6 +136,8 @@ export default function GitHubPage() {
               {repo.demoUrl && <a href={repo.demoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">🌐 Demo</a>}
               {repo.devPlatformUrl && <a href={repo.devPlatformUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Code2 size={12} /> Platform</a>}
               {repo.deploymentUrl && <a href={repo.deploymentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Rocket size={12} /> Deploy</a>}
+              {repo.dbType && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Database size={11} /> {DB_TYPES.find(d => d.value === repo.dbType)?.label || repo.dbType}</span>}
+              {repo.dbDashboardUrl && <a href={repo.dbDashboardUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">🔗 DB</a>}
               {!bulk.bulkMode && (
                 <div className="ml-auto flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button onClick={() => duplicateRepo(repo.id)} className="text-muted-foreground hover:text-blue-500 p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Duplicate"><Copy size={14} /></button>
