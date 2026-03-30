@@ -35,6 +35,17 @@ export default function CustomModulePage({ sectionId }: Props) {
 
   const cd = useConfirmDialog();
 
+  const fields = mod?.fields || [];
+  const data = mod?.data || [];
+
+  const filtered = useMemo(() => {
+    if (!search) return data;
+    const q = search.toLowerCase();
+    return data.filter(row =>
+      fields.some(f => String(row[f.key] || "").toLowerCase().includes(q))
+    );
+  }, [data, search, fields]);
+
   if (!mod) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -44,17 +55,6 @@ export default function CustomModulePage({ sectionId }: Props) {
       </div>
     );
   }
-
-  const fields = mod.fields || [];
-  const data = mod.data || [];
-
-  const filtered = useMemo(() => {
-    if (!search) return data;
-    const q = search.toLowerCase();
-    return data.filter(row =>
-      fields.some(f => String(row[f.key] || "").toLowerCase().includes(q))
-    );
-  }, [data, search, fields]);
 
   const openAddRow = () => {
     const empty: Record<string, any> = { __id: `row-${Date.now()}` };

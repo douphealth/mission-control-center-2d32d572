@@ -73,7 +73,7 @@ export default function DashboardLayout() {
   const { isLoading } = useDashboard();
   const { activeSection } = useNavigationStore();
   const isMobile = useIsMobile();
-  const Section = sectionMap[activeSection] || DashboardHome;
+  const Section = activeSection.startsWith('custom-') ? CustomModulePage : (sectionMap[activeSection] || DashboardHome);
 
   if (isLoading) {
     return (
