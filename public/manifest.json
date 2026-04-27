@@ -2,10 +2,11 @@
   "name": "Mission Control",
   "short_name": "MissionCtrl",
   "description": "Your personal & business mission control — fully offline-first, enterprise-grade dashboard for everything.",
-  "start_url": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0d0f14",
-  "theme_color": "#3b5cf6",
+  "theme_color": "#2d6a4f",
   "orientation": "any",
   "categories": [
     "productivity",
@@ -29,33 +30,24 @@
   "shortcuts": [
     {
       "name": "Dashboard",
-      "url": "/?section=dashboard",
-      "icons": [
-        {
-          "src": "/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Tasks",
-      "url": "/?section=tasks",
-      "icons": [
-        {
-          "src": "/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
+      "url": "/tasks",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Add Task",
-      "url": "/?section=tasks&action=new",
-      "icons": [
-        {
-          "src": "/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
+      "name": "Notes",
+      "url": "/notes",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Calendar",
+      "url": "/calendar",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }

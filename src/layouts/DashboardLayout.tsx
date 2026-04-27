@@ -6,8 +6,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import RouteErrorBoundary from '@/components/RouteErrorBoundary';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const DashboardHome = lazy(() => import('@/pages/DashboardHome'));
 const TasksPage = lazy(() => import('@/pages/TasksPage'));
@@ -52,9 +53,11 @@ const sectionMap: Record<string, React.LazyExoticComponent<any>> = {
   habits: HabitsPage,
 };
 
+const VALID_SECTIONS = new Set(Object.keys(sectionMap));
+
 function LoadingSkeleton() {
   return (
-    <div className="animate-pulse space-y-4 p-2">
+    <div className="animate-pulse space-y-4 p-2" role="status" aria-label="Loading content">
       <div className="h-8 bg-muted/50 rounded-xl w-48" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
@@ -71,9 +74,37 @@ function LoadingSkeleton() {
 
 export default function DashboardLayout() {
   const { isLoading } = useDashboard();
-  const { activeSection } = useNavigationStore();
+  const { section: urlSection } = useParams<{ section: string }>();
+  const navigate = useNavigate();
+  const { _setNavigate, setActiveSection } = useNavigationStore();
   const isMobile = useIsMobile();
-  const Section = activeSection.startsWith('custom-') ? CustomModulePage : (sectionMap[activeSection] || DashboardHome);
+
+  // Inject the router navigate function into the store once
+  useEffect(() => {
+    _setNavigate((path: string) => navigate(path));
+  }, [navigate, _setNavigate]);
+
+  // Derive active section from URL
+  const activeSection = urlSection || 'dashboard';
+  const isCustom = activeSection.startsWith('custom-');
+  const isValid = isCustom || VALID_SECTIONS.has(activeSection);
+
+  // Sync URL → Zustand store (for components reading activeSection from store)
+  useEffect(() => {
+    if (isValid) {
+      // Update store without triggering navigation (direct set)
+      useNavigationStore.setState({ activeSection });
+    }
+  }, [activeSection, isValid]);
+
+  // Redirect invalid sections
+  useEffect(() => {
+    if (urlSection && !isValid) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [urlSection, isValid, navigate]);
+
+  const Section = isCustom ? CustomModulePage : (sectionMap[activeSection] || DashboardHome);
 
   if (isLoading) {
     return (
@@ -85,7 +116,7 @@ export default function DashboardLayout() {
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="w-12 h-12 mx-auto rounded-xl gradient-primary flex items-center justify-center shadow-[var(--shadow-primary)]"
           >
-            <span className="text-primary-foreground font-bold text-lg">N</span>
+            <span className="text-primary-foreground font-bold text-lg" aria-hidden="true">N</span>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 4 }}
@@ -100,16 +131,18 @@ export default function DashboardLayout() {
     );
   }
 
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Hide sidebar on mobile — use bottom nav instead */}
       <div className="hidden lg:block">
         <Sidebar />
       </div>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto pb-24 lg:pb-0 overscroll-contain">
+        <main
+          id="main-content"
+          className="flex-1 overflow-y-auto pb-24 lg:pb-0 overscroll-contain"
+          aria-label={`${activeSection} page`}
+        >
           <div className="max-w-[1600px] mx-auto p-3 sm:p-5 lg:p-8">
             <RouteErrorBoundary sectionName={activeSection} key={activeSection}>
               <Suspense fallback={<LoadingSkeleton />}>
@@ -130,7 +163,6 @@ export default function DashboardLayout() {
         </main>
         {!isMobile && <StatusBar />}
       </div>
-      {/* Mobile bottom navigation */}
       <MobileBottomNav />
     </div>
   );

@@ -1,14 +1,9 @@
 import { useDashboard } from '@/contexts/DashboardContext';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Globe, CheckSquare, Clock, Zap, Calendar, FileText, Target, DollarSign,
-  Eye, EyeOff, ArrowUpRight, ArrowDownRight, ExternalLink,
-  Flame, ChevronRight, BarChart3, ArrowUp, ArrowDown, X,
-  LayoutGrid, ChevronDown, Plus, TrendingUp, Cloud, RefreshCw, Loader2,
-} from 'lucide-react';
+import { Globe, SquareCheck as CheckSquare, Clock, Zap, Calendar, FileText, Target, DollarSign, Eye, EyeOff, ArrowUpRight, ArrowDownRight, ExternalLink, Flame, ChevronRight, ChartBar as BarChart3, ArrowUp, ArrowDown, X, LayoutGrid, ChevronDown, Plus, TrendingUp, Cloud, RefreshCw, Loader as Loader2 } from 'lucide-react';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 /* ─── animation helpers ─── */
@@ -72,29 +67,27 @@ export default function DashboardHome() {
   const { userName } = useSettingsStore();
   const [clock, setClock] = useState(new Date());
   const gcal = useGoogleCalendar({ autoFetch: true });
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-
   useEffect(() => { const t = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(t); }, []);
 
-  /* computed */
-  const today = new Date().toISOString().split('T')[0];
-  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
-  const done = tasks.filter(t => t.status === 'done');
-  const open = tasks.filter(t => t.status !== 'done');
-  const dueToday = tasks.filter(t => t.dueDate === today && t.status !== 'done').length;
-  const overdue = tasks.filter(t => t.dueDate < today && t.status !== 'done').length;
-  const completedToday = tasks.filter(t => t.completedAt === today).length;
-  const income = payments.filter(p => p.type === 'income' && p.status === 'paid').reduce((s, p) => s + p.amount, 0);
-  const expense = payments.filter(p => (p.type === 'expense' || p.type === 'subscription') && p.status === 'paid').reduce((s, p) => s + p.amount, 0);
-  const pending = payments.filter(p => p.status === 'pending' || p.status === 'overdue').reduce((s, p) => s + p.amount, 0);
-  const pct = tasks.length > 0 ? (done.length / tasks.length) * 100 : 0;
-  const activeSites = websites.filter(w => w.status === 'active').length;
-  const topTasks = [...open].sort((a, b) => { const p: any = { critical: 0, high: 1, medium: 2, low: 3 }; return (p[a.priority] || 3) - (p[b.priority] || 3); }).slice(0, 7);
-  const upcoming = tasks.filter(t => t.status !== 'done' && t.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 6);
-  const recentBuilds = [...buildProjects].sort((a, b) => b.lastWorkedOn.localeCompare(a.lastWorkedOn)).slice(0, 5);
-  const topIdeas = ideas.filter(i => i.status !== 'parked').sort((a, b) => b.votes - a.votes).slice(0, 4);
-  const pinnedNotes = notes.filter(n => n.pinned).slice(0, 4);
-  const taskBar = [3, 5, 4, 7, 6, 8, open.length];
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const fmt = useMemo(() => (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n), []);
+
+  const done = useMemo(() => tasks.filter(t => t.status === 'done'), [tasks]);
+  const open = useMemo(() => tasks.filter(t => t.status !== 'done'), [tasks]);
+  const dueToday = useMemo(() => tasks.filter(t => t.dueDate === today && t.status !== 'done').length, [tasks, today]);
+  const overdue = useMemo(() => tasks.filter(t => t.dueDate < today && t.status !== 'done').length, [tasks, today]);
+  const completedToday = useMemo(() => tasks.filter(t => t.completedAt === today).length, [tasks, today]);
+  const income = useMemo(() => payments.filter(p => p.type === 'income' && p.status === 'paid').reduce((s, p) => s + p.amount, 0), [payments]);
+  const expense = useMemo(() => payments.filter(p => (p.type === 'expense' || p.type === 'subscription') && p.status === 'paid').reduce((s, p) => s + p.amount, 0), [payments]);
+  const pending = useMemo(() => payments.filter(p => p.status === 'pending' || p.status === 'overdue').reduce((s, p) => s + p.amount, 0), [payments]);
+  const pct = useMemo(() => tasks.length > 0 ? (done.length / tasks.length) * 100 : 0, [tasks.length, done.length]);
+  const activeSites = useMemo(() => websites.filter(w => w.status === 'active').length, [websites]);
+  const topTasks = useMemo(() => [...open].sort((a, b) => { const p: any = { critical: 0, high: 1, medium: 2, low: 3 }; return (p[a.priority] || 3) - (p[b.priority] || 3); }).slice(0, 7), [open]);
+  const upcoming = useMemo(() => tasks.filter(t => t.status !== 'done' && t.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 6), [tasks, today]);
+  const recentBuilds = useMemo(() => [...buildProjects].sort((a, b) => b.lastWorkedOn.localeCompare(a.lastWorkedOn)).slice(0, 5), [buildProjects]);
+  const topIdeas = useMemo(() => ideas.filter(i => i.status !== 'parked').sort((a, b) => b.votes - a.votes).slice(0, 4), [ideas]);
+  const pinnedNotes = useMemo(() => notes.filter(n => n.pinned).slice(0, 4), [notes]);
+  const taskBar = useMemo(() => [3, 5, 4, 7, 6, 8, open.length], [open.length]);
 
   /* shared card style */
   const card = 'rounded-2xl sm:rounded-3xl border border-border/35 bg-card shadow-sm transition-all duration-300 hover:shadow-md hover:border-border/55 overflow-hidden';

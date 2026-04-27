@@ -26,6 +26,10 @@ interface NavigationState {
   // Import modal state
   importModalOpen: boolean;
   setImportModalOpen: (open: boolean) => void;
+
+  // URL navigator — injected by DashboardLayout
+  _navigate: ((path: string) => void) | null;
+  _setNavigate: (fn: (path: string) => void) => void;
 }
 
 export const useNavigationStore = create<NavigationState>()(
@@ -35,6 +39,9 @@ export const useNavigationStore = create<NavigationState>()(
       setActiveSection: (section) => {
         set({ activeSection: section });
         get().pushRecent(section);
+        // Navigate via injected router fn if available
+        const nav = get()._navigate;
+        if (nav) nav(`/${section}`);
       },
 
       sidebarOpen: false,
@@ -56,12 +63,16 @@ export const useNavigationStore = create<NavigationState>()(
 
       importModalOpen: false,
       setImportModalOpen: (open) => set({ importModalOpen: open }),
+
+      _navigate: null,
+      _setNavigate: (fn) => set({ _navigate: fn }),
     }),
     {
       name: 'mc-navigation-v1',
       partialize: (state) => ({
         recentSections: state.recentSections,
         sidebarCollapsed: state.sidebarCollapsed,
+        activeSection: state.activeSection,
       }),
     }
   )

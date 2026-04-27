@@ -63,6 +63,9 @@ interface DashboardContextValue {
   // Utility
   genId: () => string;
 
+  // Delete with undo toast
+  deleteItemWithUndo: (table: string, id: string, label: string) => Promise<void>;
+
   // Backward-compat
   updateData: (partial: Record<string, any>) => Promise<void>;
 }
@@ -72,6 +75,7 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 // ─── Default data seeder ────────────────────────────────────────────────────────
 
 async function seedDefaults() {
+  }
   const [wCount, tCount, rCount, bCount, lCount, nCount, pCount, iCount, cCount, sCount] = await Promise.all([
     db.websites.count(), db.tasks.count(), db.repos.count(), db.buildProjects.count(),
     db.links.count(), db.notes.count(), db.payments.count(), db.ideas.count(),
@@ -170,7 +174,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   // Zustand stores
   const { activeSection, setActiveSection, sidebarOpen, setSidebarOpen, sidebarCollapsed } = useNavigationStore();
   const { userName, userRole, theme, toggleTheme, setTheme, loadSettings } = useSettingsStore();
-  const { isLoading, setIsLoading, dashboardLayout, setDashboardLayout, addItem, updateItem, deleteItem, duplicateItem, bulkAddItems, updateSettings, saveDashboardLayout, exportAllData, importAllData, updateData } = useDataStore();
+  const { isLoading, setIsLoading, dashboardLayout, setDashboardLayout, addItem, updateItem, deleteItem, deleteItemWithUndo, duplicateItem, bulkAddItems, updateSettings, saveDashboardLayout, exportAllData, importAllData, updateData } = useDataStore();
 
   const initialized = useRef(false);
 
@@ -261,7 +265,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     userName, userRole, theme, sidebarCollapsed, dashboardLayout,
     activeSection, setActiveSection, sidebarOpen, setSidebarOpen,
     toggleTheme, setTheme,
-    addItem, updateItem, deleteItem, duplicateItem, bulkAddItems,
+    addItem, updateItem, deleteItem, deleteItemWithUndo, duplicateItem, bulkAddItems,
     updateSettings, saveDashboardLayout,
     isLoading,
     exportAllData, importAllData,
