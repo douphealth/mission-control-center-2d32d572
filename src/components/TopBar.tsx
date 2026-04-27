@@ -69,26 +69,20 @@ export default function TopBar() {
     <>
       <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-2xl border-b border-border/15 px-3 sm:px-6 lg:px-8 h-14 sm:h-[72px] flex items-center gap-2 sm:gap-3">
         {/* Mobile menu */}
-        <button
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open navigation menu"
-          className="lg:hidden text-muted-foreground hover:text-foreground p-2 -ml-1 active:scale-90 transition-transform touch-manipulation"
-        >
-          <Menu size={18} aria-hidden="true" />
+        <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground p-2 -ml-1 active:scale-90 transition-transform touch-manipulation">
+          <Menu size={18} />
         </button>
 
         {/* Search — Dribbble style with shortcut indicator */}
         <motion.button
           onClick={() => setCommandPaletteOpen(true)}
           whileTap={{ scale: 0.98 }}
-          aria-label="Open command palette (Ctrl+K or Cmd+K)"
-          role="searchbox"
           className="flex items-center gap-2 sm:gap-2.5 flex-1 max-w-lg h-9 sm:h-11 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-secondary/50 border border-border/20 hover:border-primary/20 hover:bg-secondary/70 transition-all duration-300 cursor-pointer group touch-manipulation"
         >
-          <Search size={14} className="text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0 sm:w-4 sm:h-4" aria-hidden="true" />
-          <span className="text-xs sm:text-sm text-muted-foreground/40 flex-1 text-left truncate">Search everything...</span>
+          <Search size={14} className="text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0 sm:w-4 sm:h-4" />
+          <span className="text-xs sm:text-sm text-muted-foreground/40 flex-1 text-left truncate">Search...</span>
           <div className="hidden md:flex items-center gap-1">
-            <kbd className="text-[10px] text-muted-foreground/30 bg-card px-2 py-1 rounded-lg font-mono border border-border/30 shadow-sm">⌘ K</kbd>
+            <kbd className="text-[10px] text-muted-foreground/30 bg-card px-2 py-1 rounded-lg font-mono border border-border/30 shadow-sm">⌘ F</kbd>
           </div>
         </motion.button>
 
@@ -98,29 +92,26 @@ export default function TopBar() {
             onClick={() => setImportModalOpen(true)}
             whileTap={{ scale: 0.9 }}
             className="hidden sm:flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
-            aria-label="Import data"
-          title="Import"
+            title="Import"
           >
-            <Mail size={16} aria-hidden="true" />
+            <Mail size={16} />
           </motion.button>
 
           <motion.button
             onClick={handleExport}
             whileTap={{ scale: 0.9 }}
-            aria-label="Export data backup"
             className="hidden sm:flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
             title="Export"
           >
-            <Download size={16} aria-hidden="true" />
+            <Download size={16} />
           </motion.button>
 
           {/* Notifications */}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            aria-label={notifCount > 0 ? `${notifCount} notifications — ${overdueCount} overdue, ${dueTodayCount} due today` : "No notifications"}
             className="relative flex items-center justify-center w-9 sm:w-10 h-9 sm:h-10 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60 transition-all touch-manipulation"
           >
-            <Bell size={16} className="sm:w-[18px] sm:h-[18px]" aria-hidden="true" />
+            <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
             {notifCount > 0 && (
               <motion.span
                 initial={{ scale: 0 }}
@@ -153,12 +144,9 @@ export default function TopBar() {
             <motion.button
               onClick={() => setQuickAddOpen(!quickAddOpen)}
               whileTap={{ scale: 0.88 }}
-              aria-label={quickAddOpen ? "Close quick add menu" : "Quick add item (Ctrl+N)"}
-              aria-expanded={quickAddOpen}
-              aria-haspopup="menu"
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[var(--shadow-primary)] hover:shadow-[0_8px_30px_-6px_hsl(var(--primary)/0.5)] transition-shadow touch-manipulation"
             >
-              <Plus size={16} className={`transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} aria-hidden="true" />
+              <Plus size={16} className={`transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} />
             </motion.button>
 
             <AnimatePresence>

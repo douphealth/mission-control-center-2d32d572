@@ -1,9 +1,12 @@
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useState, useRef, useCallback, useMemo } from "react";
-import { taskSchema } from "@/lib/schemas";
-import { useFormValidation } from "@/hooks/useFormValidation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, CircleCheck as CheckCircle2, Circle, TriangleAlert as AlertTriangle, CreditCard as Edit2, Trash2, GripVertical, ChevronDown, LayoutGrid, List, Flag, Tag, Calendar, X, Clock, ArrowRight, Zap, Target, Flame, Filter, MoveHorizontal as MoreHorizontal, SquareCheck as CheckSquare, Layers, TrendingUp, ChartBar as BarChart3, Copy, Bell, Repeat, CalendarRange } from "lucide-react";
+import {
+  Plus, Search, CheckCircle2, Circle, AlertTriangle, Edit2, Trash2,
+  GripVertical, ChevronDown, LayoutGrid, List, Flag, Tag, Calendar,
+  X, Clock, ArrowRight, Zap, Target, Flame, Filter, MoreHorizontal,
+  CheckSquare, Layers, TrendingUp, BarChart3, Copy, Bell, Repeat, CalendarRange
+} from "lucide-react";
 import { toast } from "sonner";
 import type { Task, Subtask } from "@/lib/db";
 import { REMINDER_LABELS, getReminderLabel, requestNotificationPermission } from "@/lib/notifications";
@@ -69,8 +72,7 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
     task ? { ...task } : { ...EMPTY, status: defaultStatus || "todo" }
   );
   const [newSub, setNewSub] = useState("");
-  const { validate, getError, clearError } = useFormValidation(taskSchema);
-  const uf = (k: keyof typeof form, v: any) => { setForm(f => ({ ...f, [k]: v })); clearError(k); };
+  const uf = (k: keyof typeof form, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   // reset when task changes
   useMemo(() => {
@@ -87,7 +89,7 @@ function TaskModal({ open, task, defaultStatus, onClose, onSave, onDelete }: Tas
   const updateSub = (id: string, changes: Partial<Subtask>) => uf("subtasks", form.subtasks.map((s: Subtask) => s.id === id ? { ...s, ...changes } : s));
 
   const save = () => {
-    if (!validate(form)) return;
+    if (!form.title.trim()) { toast.error("Title required"); return; }
     onSave({ ...(task?.id ? { id: task.id } : {}), ...form });
     onClose();
   };

@@ -5,50 +5,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Skip to content link for keyboard/screen reader accessibility */
-.skip-to-content {
-  position: absolute;
-  left: -9999px;
-  top: auto;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  z-index: 9999;
-}
-.skip-to-content:focus {
-  position: fixed;
-  left: 16px;
-  top: 16px;
-  width: auto;
-  height: auto;
-  padding: 12px 20px;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 14px;
-  text-decoration: none;
-  box-shadow: 0 4px 20px hsl(var(--primary) / 0.4);
-  outline: 3px solid hsl(var(--primary-foreground) / 0.5);
-  outline-offset: 2px;
-}
-
-/* Focus visible styles — only show ring on keyboard nav */
-:focus-visible {
-  outline: 2px solid hsl(var(--primary));
-  outline-offset: 2px;
-}
-
-/* Reduce motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
 @layer base {
   :root {
     --background: 210 22% 96%;

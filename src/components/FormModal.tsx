@@ -80,34 +80,23 @@ FormModal.displayName = "FormModal";
 export default FormModal;
 
 /* Reusable form field components */
-export function FormField({ label, children, error, required }: { label: string; children: React.ReactNode; error?: string; required?: boolean }) {
+export function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-        {label}
-        {required && <span className="text-destructive ml-0.5">*</span>}
-      </label>
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
       {children}
-      {error && (
-        <p className="text-[11px] text-destructive mt-1 flex items-center gap-1" role="alert">
-          <span>⚠</span> {error}
-        </p>
-      )}
     </div>
   );
 }
 
-export function FormInput({ value, onChange, placeholder, type = "text", error, required, autoFocus }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string; error?: string; required?: boolean; autoFocus?: boolean }) {
+export function FormInput({ value, onChange, placeholder, type = "text" }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
   return (
     <input
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      required={required}
-      autoFocus={autoFocus}
-      aria-invalid={!!error}
-      className={`w-full px-3 py-2.5 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 transition-shadow placeholder:text-muted-foreground ${error ? 'ring-2 ring-destructive/50 focus:ring-destructive/50' : 'focus:ring-primary/30'}`}
+      className="w-full px-3 py-2.5 rounded-xl bg-secondary text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow placeholder:text-muted-foreground"
     />
   );
 }

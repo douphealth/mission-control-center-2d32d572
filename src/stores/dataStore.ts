@@ -39,9 +39,6 @@ interface DataState {
     exportAllData: () => Promise<string>;
     importAllData: (json: string) => Promise<void>;
 
-    // ─── Delete with undo support ─────────────────────────────────────────────
-    deleteItemWithUndo: (table: string, id: string, label: string) => Promise<void>;
-
     // ─── Backward compat ──────────────────────────────────────────────────────
     updateData: (partial: Record<string, any>) => Promise<void>;
 
@@ -107,7 +104,7 @@ function schedulePush() {
                 }, 5000);
             }
         });
-    }, 3000); // 3s debounce — balances responsiveness with write efficiency
+    }, 1000); // Reduced from 2s to 1s for faster cross-device sync
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────────
@@ -278,27 +275,6 @@ export const useDataStore = create<DataState>((set, _get) => ({
         const { useSettingsStore } = await import('@/stores/settingsStore');
         await useSettingsStore.getState().loadSettings();
         schedulePush();
-    },
-
-    // ─── Delete with undo ─────────────────────────────────────────────────────
-    deleteItemWithUndo: async (table: string, id: string, label: string): Promise<void> => {
-        const tableRef = getTable(table);
-        if (!tableRef) throw new Error(`Unknown table: ${table}`);
-        // Snapshot the item before deleting
-        const snapshot = await tableRef.get(id);
-        await tableRef.delete(id);
-        schedulePush();
-        if (snapshot) {
-            const { toastWithUndo } = await import('@/stores/undoStore');
-            toastWithUndo(
-                `Deleted "${label}"`,
-                label,
-                async () => {
-                    await tableRef.put(snapshot);
-                    schedulePush();
-                },
-            );
-        }
     },
 
     // ─── Backward compat ──────────────────────────────────────────────────────
